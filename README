@@ -1,0 +1,9 @@
+FINF Is Not Forth
+
+FINF is a simple implementation for a FORTH-like language for the Arduino platform. It is free software, released under GNU GPL version 2.
+
+Current version weighs about 5kB of object code, making it suitable even for less beefier Arduinos, such as the ones based on the Atmega168 microcontrollers.
+
+Aside from a *very* limited word library, FINF does not yet support "if..else..then" blocks, nor "repeat..until" blocks. Code comments are not supported either.
+
+Please fork it and help improve it! :)

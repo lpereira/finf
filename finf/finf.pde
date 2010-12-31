@@ -315,6 +315,8 @@ int feed_char(char ch)
     if (ch == ':') {
       state = STATE_DEFWORD;
       mode = 1;
+    } else if (isspace(ch)) {
+      /* do nothing */
     } else if (isdigit(ch)) {
       buffer[bufidx++] = ch;
       state = STATE_ADDNUM;

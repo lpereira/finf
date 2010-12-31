@@ -103,11 +103,10 @@ int word_new_opcode(const char *name, unsigned char opcode)
 
 void word_init()
 {
-  static struct {
+  struct {
     const char *name;
     unsigned char opcode;
-  } 
-  default_words[] = {
+  } const default_words[]  = {
     { "+", OP_SUM },
     { "-", OP_SUB },
     { "*", OP_MUL },

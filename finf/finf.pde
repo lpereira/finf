@@ -21,7 +21,8 @@ enum {
   OP_SUM, OP_SUB, OP_MUL, OP_DIV,
   OP_SWAP, OP_SHOWSTACK, OP_DUP,
   OP_WORDS, OP_DROP,
-  OP_EQUAL, OP_NEGATE
+  OP_EQUAL, OP_NEGATE,
+  OP_DELAY, OP_PINWRITE, OP_PINMODE
 };
 
 struct Word {
@@ -118,6 +119,9 @@ void word_init()
     { "drop", OP_DROP },
     { "=", OP_EQUAL },
     { "negate", OP_NEGATE },
+    { "delay", OP_DELAY },
+    { "pinwrite", OP_PINWRITE },
+    { "pinmode", OP_PINMODE },
     { NULL, 0 },
   };
   int i;
@@ -202,6 +206,15 @@ void eval_code(unsigned char opcode, int param, char mode)
           int val = stack_pop();
           stack_push(stack_pop() / val);
         }
+        break;
+      case OP_DELAY:
+        delay(stack_pop());
+        break;
+      case OP_PINWRITE:
+        digitalWrite(stack_pop(), stack_pop());
+        break;
+      case OP_PINMODE:
+        pinMode(stack_pop(), stack_pop());
         break;
       case OP_PRINT:
         Serial.print((int)stack_pop());

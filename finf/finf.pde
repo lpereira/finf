@@ -302,7 +302,6 @@ int feed_char(char ch)
     if (ch == ':') {
       state = STATE_DEFWORD;
       mode = 1;
-      return 1;
     } else if (isdigit(ch)) {
       buffer[bufidx] = ch;
       state = STATE_ADDNUM;
@@ -312,6 +311,7 @@ int feed_char(char ch)
       state = STATE_ADDCODE;
       mode = 2;
     }
+    return 1;
   case STATE_DEFWORD:
     if (isspace(ch) || ch == ';') {
       if (bufidx > 0) {

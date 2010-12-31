@@ -184,7 +184,7 @@ void disasm()
         Serial.print(program[i].param);
       } else if (program[i].opcode == OP_CALL) {
         Serial.print(' ');
-        Serial.print(words[program[i].param]);
+        Serial.print(words[program[i].param].name);
       }
     } else {
       Serial.print(words[wid].name);

@@ -22,7 +22,8 @@ enum {
   OP_SWAP, OP_SHOWSTACK, OP_DUP,
   OP_WORDS, OP_DROP,
   OP_EQUAL, OP_NEGATE,
-  OP_DELAY, OP_PINWRITE, OP_PINMODE
+  OP_DELAY, OP_PINWRITE, OP_PINMODE,
+  OP_DISASM
 };
 
 struct Word {
@@ -122,6 +123,7 @@ void word_init()
     { "delay", OP_DELAY },
     { "pinwrite", OP_PINWRITE },
     { "pinmode", OP_PINMODE },
+    { "dis", OP_DISASM },
     { NULL, 0 },
   };
   int i;
@@ -154,7 +156,7 @@ int word_get_id_from_pc(int pc)
 {
   int i;
   for (i = wc; i >= 0; i--) {
-    if (words[i].p.entry == pc) return i;
+    if (words[i].t == WT_USER && words[i].p.entry == pc) return i;
   }
   return -1;
 }
@@ -167,6 +169,38 @@ int word_get_id_from_opcode(unsigned char opcode)
       return i;
   }
   return -1;
+}
+
+void disasm()
+{
+  int i;
+  
+  for (i = 0; i < pc; i++) {
+
+    int wid = word_get_id_from_opcode(program[i].opcode);
+    Serial.print(i);
+    Serial.print(' ');
+    if (wid < 0) {
+      Serial.print((char*[]){ "number", "call", "ret", "print"}[program[i].opcode]);
+      if (program[i].opcode == OP_NUM) {
+        Serial.print(' ');
+        Serial.print(program[i].param);
+      } else if (program[i].opcode == OP_CALL) {
+        Serial.print(' ');
+        Serial.print(words[program[i].param]);
+      }
+    } else {
+      Serial.print(words[wid].name);
+    }
+    int curwordid = word_get_id_from_pc(i);
+    if (curwordid > 0) {
+      Serial.print(' ');
+      Serial.print('#');
+      Serial.print(' ');
+      Serial.print(words[curwordid].name);
+    }
+    Serial.println();
+  }
 }
 
 void stack_swap()
@@ -233,6 +267,9 @@ void eval_code(unsigned char opcode, int param, char mode)
         break;
       case OP_NEGATE:
         stack_push(!stack_pop());
+        break;
+      case OP_DISASM:
+        disasm();
         break;
       case OP_WORDS:
         {

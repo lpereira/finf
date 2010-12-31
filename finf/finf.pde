@@ -450,7 +450,7 @@ int feed_char(char ch)
   return 0;
 }
 
-void setup()
+inline void setup()
 {
   Serial.begin(9600);
   Serial.println("FINF 0.1.6");
@@ -459,7 +459,7 @@ void setup()
   word_init();
 }
 
-void loop()
+inline void loop()
 {
   if (Serial.available() > 0) {
     feed_char(Serial.read());

@@ -33,12 +33,12 @@ struct Word {
     int entry;
   } p;
   unsigned char t: 1;
-};
+}  __attribute__((packed));
 
 struct Program {
   unsigned char opcode;
   int param;
-};
+} __attribute__((packed));
 
 Program program[MAX_PROGRAM];
 Word words[MAX_WORDS];

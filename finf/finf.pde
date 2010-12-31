@@ -46,8 +46,6 @@ int wc = 0;
 int sp, pc;
 int stack[MAX_STACK];
 int state = STATE_INITIAL;
-int last_word_id = -1;
-int last_pc = -1;
 char bufidx = 0, mode = 0;
 char buffer[16];
 
@@ -368,7 +366,7 @@ int feed_char(char ch)
       if (bufidx > 0) {
         buffer[bufidx] = 0;
         if (word_get_id(buffer) == -1) {
-          last_word_id = word_new_user(strdup(buffer));
+          word_new_user(strdup(buffer));
           bufidx = 0;
           if (ch == ';') {
             eval_code(OP_RET, 0, mode);

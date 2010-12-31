@@ -316,11 +316,11 @@ int feed_char(char ch)
       state = STATE_DEFWORD;
       mode = 1;
     } else if (isdigit(ch)) {
-      buffer[bufidx] = ch;
+      buffer[bufidx++] = ch;
       state = STATE_ADDNUM;
       mode = 2;
     } else {
-      buffer[bufidx] = ch;
+      buffer[bufidx++] = ch;
       state = STATE_ADDCODE;
       mode = 2;
     }

@@ -76,7 +76,7 @@ char default_words_str[] PROGMEM = "+\0"
     "freemem";
 
 #define DW(pos) (&default_words_str[pos])
-DefaultWord default_words[] = {
+DefaultWord default_words[] PROGMEM = {
   { DW(0), OP_SUM },
   { DW(2), OP_SUB },
   { DW(4), OP_MUL },
@@ -174,8 +174,11 @@ void word_init()
 {
   int i;
 
-  for (i = 0; default_words[i].name; i++) {
-    word_new_opcode(default_words[i].name, default_words[i].opcode);
+  for (i = 0; ; i++) {
+    char *name = (char *)pgm_read_word(&default_words[i].name);
+    char  op   = pgm_read_byte(&default_words[i].opcode);
+    if (!name) break;
+    word_new_opcode(name, op);
   }
 
   for (; i < MAX_WORDS; i++) {

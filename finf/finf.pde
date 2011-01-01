@@ -23,7 +23,8 @@ enum {
   OP_WORDS, OP_DROP,
   OP_EQUAL, OP_NEGATE,
   OP_DELAY, OP_PINWRITE, OP_PINMODE,
-  OP_DISASM
+  OP_DISASM, OP_IF, OP_ELSE, OP_THEN,
+  OP_BEGIN, OP_UNTIL, OP_EMIT
 };
 
 struct Word {
@@ -121,6 +122,12 @@ void word_init()
     { "pinwrite", OP_PINWRITE },
     { "pinmode", OP_PINMODE },
     { "dis", OP_DISASM },
+    { "if", OP_IF },
+    { "else", OP_ELSE },
+    { "then", OP_THEN },
+    { "begin", OP_BEGIN },
+    { "until", OP_UNTIL },
+    { "emit", OP_EMIT },
     { NULL, 0 },
   };
   int i;
@@ -178,7 +185,7 @@ void disasm()
     Serial.print(i);
     Serial.print(' ');
     if (wid < 0) {
-      Serial.print((char*[]){ "number", "call", "ret", "print"}[program[i].opcode]);
+      Serial.print((char*[]){"number", "call", "ret", "print"}[program[i].opcode]);
       if (program[i].opcode == OP_NUM) {
         Serial.print(' ');
         Serial.print(program[i].param);
@@ -188,6 +195,13 @@ void disasm()
       }
     } else {
       Serial.print(words[wid].name);
+    }
+    if (program[i].opcode == OP_IF
+        || program[i].opcode == OP_ELSE
+        || program[i].opcode == OP_UNTIL) {
+      Serial.print(' ');
+      Serial.print(program[i].param);
+      Serial.print(' ');
     }
     int curwordid = word_get_id_from_pc(i);
     if (curwordid > 0) {
@@ -265,8 +279,17 @@ void eval_code(unsigned char opcode, int param, char mode)
       case OP_NEGATE:
         stack_push(!stack_pop());
         break;
+      case OP_EMIT:
+        Serial.print((char)stack_pop());
+        break;
       case OP_DISASM:
         disasm();
+        break;
+      case OP_IF:
+      case OP_ELSE:
+      case OP_THEN:
+      case OP_BEGIN:
+      case OP_UNTIL:
         break;
       case OP_WORDS:
         {
@@ -308,8 +331,24 @@ void eval_code(unsigned char opcode, int param, char mode)
 void call(int entry)
 {
   while (program[entry].opcode != OP_RET) {
-    eval_code(program[entry].opcode, program[entry].param, 2);
-    entry++;
+    if (program[entry].opcode == OP_IF) {
+      if (stack_pop()) {
+        entry++;
+      } else {
+        entry = program[entry].param + 1;
+      }
+    } else if (program[entry].opcode == OP_ELSE) {
+      entry = program[entry].param;
+    } else if (program[entry].opcode == OP_UNTIL) {
+      if (stack_pop()) {
+        entry = program[entry].param;
+      } else {
+        entry++;
+      }
+    } else {
+      eval_code(program[entry].opcode, program[entry].param, 2);
+      entry++;
+    }
   }
 }
 
@@ -394,12 +433,29 @@ int feed_char(char ch)
         int wid = word_get_id(buffer);
         if (wid == -1) return error("Undefined word", buffer);
         if (words[wid].t == WT_OPCODE) {
-          eval_code(words[wid].p.opcode, 0, mode);
+          if (mode == 1 && !strcmp(buffer, "if")) {
+            stack_push(pc);
+            eval_code(OP_IF, 0, mode);
+          } else if (mode == 1 && !strcmp(buffer, "else")) {
+            program[stack_pop()].param = pc;
+            stack_push(pc);
+            eval_code(OP_ELSE, 0, mode);
+          } else if (mode == 1 && !strcmp(buffer, "then")) {
+            program[stack_pop()].param = pc;
+            eval_code(OP_THEN, 0, mode);
+          } else if (mode == 1 && !strcmp(buffer, "begin")) {
+            stack_push(pc);
+          } else if (mode == 1 && !strcmp(buffer, "until")) {
+            eval_code(OP_UNTIL, stack_pop(), mode);
+          } else {
+            eval_code(words[wid].p.opcode, 0, mode);
+          }
         } else {
           eval_code(OP_CALL, wid, mode);
         }
         bufidx = 0;
         if (ch == ';') {
+          /* FIXME check if there is an open if/else/then block */
           eval_code(OP_RET, 0, mode);
           state = STATE_INITIAL;
         }

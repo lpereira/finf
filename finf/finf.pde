@@ -51,6 +51,7 @@ struct DefaultWord {
   char opcode;
 } __attribute__((packed));
 
+char hidden_ops_str[] PROGMEM = "num\0wrd\0ret\0prn";
 char default_words_str[] PROGMEM = "+\0"
     "-\0"
     "*\0"
@@ -240,8 +241,7 @@ void disasm()
     Serial.print(i);
     Serial.print(' ');
     if (wid < 0) {
-      char hidden_ops[] PROGMEM = "num\0wrd\0ret\0prn";
-      serial_print_P(&hidden_ops[program[i].opcode * 4]);
+      serial_print_P(&hidden_ops_str[program[i].opcode * 4]);
       if (program[i].opcode == OP_NUM) {
         Serial.print(' ');
         Serial.print(program[i].param);

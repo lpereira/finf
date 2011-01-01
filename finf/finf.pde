@@ -132,13 +132,13 @@ void word_init()
   };
   int i;
 
-  for (i = 0; i < MAX_WORDS; i++) {
-    words[i].name = NULL;
-    words[i].p.opcode = 0;
-  }
-
   for (i = 0; default_words[i].name; i++) {
     word_new_opcode(default_words[i].name, default_words[i].opcode);
+  }
+
+  for (; i < MAX_WORDS; i++) {
+    words[i].name = NULL;
+    words[i].p.opcode = 0;
   }
 }
 

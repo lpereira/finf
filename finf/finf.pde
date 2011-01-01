@@ -203,7 +203,8 @@ int word_get_id_from_pc(int pc)
 {
   int i;
   for (i = wc; i >= 0; i--) {
-    if (words[i].t == WT_USER && words[i].p.entry == pc) return i;
+    if (words[i].type == WT_USER && words[i].param.entry == pc)
+      return i;
   }
   return -1;
 }

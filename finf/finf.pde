@@ -577,7 +577,9 @@ inline void setup()
 inline void loop()
 {
   if (Serial.available() > 0) {
-    feed_char(Serial.read());
+    unsigned ch = Serial.read();
+    Serial.print((char)ch);
+    feed_char(ch);
   }
 }
 

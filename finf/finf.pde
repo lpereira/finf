@@ -107,11 +107,8 @@ DefaultWord default_words[] PROGMEM = {
 
 Program program[MAX_PROGRAM];
 Word words[MAX_WORDS];
-int wc = 0;
-int sp, pc;
 int stack[MAX_STACK];
-int state = STATE_INITIAL;
-char bufidx = 0, mode = 0;
+char wc = -1, sp = 0, pc = 0, bufidx = 0, mode = 0, state = STATE_INITIAL;
 char buffer[16];
 
 #ifndef isdigit
@@ -572,8 +569,6 @@ inline void setup()
   serial_print_P(PSTR("FINF 0.1.6 - "));
   Serial.print(free_mem());
   serial_print_P(PSTR(" bytes free\n"));
-  wc = -1;
-  pc = 0;
   word_init();
 }
 

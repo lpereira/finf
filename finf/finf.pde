@@ -4,6 +4,8 @@
  * Copyright (c) 2005-2010 Leandro A. F. Pereira <leandro@tia.mat.br>
  * Licensed under GNU GPL version 2.
  */
+#include <avr/pgmspace.h>
+
 #define MAX_WORDS 32
 #define MAX_PROGRAM 48
 #define MAX_STACK 16
@@ -24,22 +26,83 @@ enum {
   OP_EQUAL, OP_NEGATE,
   OP_DELAY, OP_PINWRITE, OP_PINMODE,
   OP_DISASM, OP_IF, OP_ELSE, OP_THEN,
-  OP_BEGIN, OP_UNTIL, OP_EMIT
+  OP_BEGIN, OP_UNTIL, OP_EMIT, OP_FREEMEM
 };
 
 struct Word {
-  const char *name;
   union {
-    unsigned char opcode;
+    char *user;
+    PGM_P internal;
+  } name;
+  union {
+    char opcode;
     unsigned char entry;
-  } p;
-  unsigned char t: 1;
+  } param;
+  unsigned char type: 1;
 }  __attribute__((packed));
 
 struct Program {
   unsigned char opcode;
   int param;
 } __attribute__((packed));
+
+struct DefaultWord {
+  PGM_P name;
+  char opcode;
+} __attribute__((packed));
+
+char default_words_str[] PROGMEM = "+\0"
+    "-\0"
+    "*\0"
+    "/\0"
+    ".\0"
+    "stk\0"
+    "swap\0"
+    "dup\0"
+    "words\0"
+    "drop\0"
+    "=\0"
+    "negate\0"
+    "delay\0"
+    "pinwrite\0"
+    "pinmode\0"
+    "dis\0"
+    "if\0"
+    "else\0"
+    "then\0"
+    "begin\0"
+    "until\0"
+    "emit\0"
+    "freemem";
+
+#define DW(pos) (&default_words_str[pos])
+DefaultWord default_words[] = {
+  { DW(0), OP_SUM },
+  { DW(2), OP_SUB },
+  { DW(4), OP_MUL },
+  { DW(6), OP_DIV },
+  { DW(8), OP_PRINT },
+  { DW(10), OP_SHOWSTACK },
+  { DW(14), OP_SWAP },
+  { DW(19), OP_DUP },
+  { DW(23), OP_WORDS },
+  { DW(29), OP_DROP },
+  { DW(34), OP_EQUAL },
+  { DW(36), OP_NEGATE },
+  { DW(43), OP_DELAY },
+  { DW(49), OP_PINWRITE },
+  { DW(58), OP_PINMODE },
+  { DW(66), OP_DISASM },
+  { DW(70), OP_IF },
+  { DW(73), OP_ELSE },
+  { DW(78), OP_THEN },
+  { DW(83), OP_BEGIN },
+  { DW(89), OP_UNTIL },
+  { DW(95), OP_EMIT },
+  { DW(100), OP_FREEMEM },
+  { NULL, 0 },
+};
+#undef DW
 
 Program program[MAX_PROGRAM];
 Word words[MAX_WORDS];
@@ -64,11 +127,18 @@ int isspace(unsigned char ch)
 }
 #endif
 
+void serial_print_P(char *msg)
+{
+  char buf[20];
+  strncpy_P(buf, msg, sizeof(buf));
+  Serial.print(buf);
+}
+
 void stack_push(int value)
 {
   stack[++sp] = value;
   if (sp > MAX_STACK) {
-    Serial.println("Stack overflow");
+    serial_print_P(PSTR("Stack overflow"));
     for(;;);
   }
 }
@@ -76,7 +146,7 @@ void stack_push(int value)
 int stack_pop(void)
 {
   if (sp < 0) {
-    Serial.println("Stack underflow");
+    serial_print_P(PSTR("Stack underflow\n"));
     return 0;
   }
   return stack[sp--];
@@ -85,51 +155,23 @@ int stack_pop(void)
 int word_new_user(char *name)
 {
   if (++wc >= MAX_WORDS) return -1;
-  words[wc].name = name;
-  words[wc].t = WT_USER;
-  words[wc].p.entry = pc;
+  words[wc].name.user = name;
+  words[wc].type = WT_USER;
+  words[wc].param.entry = pc;
   return wc;
 }
 
-int word_new_opcode(const char *name, unsigned char opcode)
+int word_new_opcode(PGM_P name, char opcode)
 {
   if (++wc >= MAX_WORDS) return -1;
-  words[wc].name = name;
-  words[wc].t = WT_OPCODE;
-  words[wc].p.opcode = opcode;
+  words[wc].name.internal = name;
+  words[wc].type = WT_OPCODE;
+  words[wc].param.opcode = opcode;
   return wc;
 }
 
 void word_init()
 {
-  struct {
-    const char *name;
-    unsigned char opcode;
-  } const default_words[]  = {
-    { "+", OP_SUM },
-    { "-", OP_SUB },
-    { "*", OP_MUL },
-    { "/", OP_DIV },
-    { ".", OP_PRINT },
-    { "stk", OP_SHOWSTACK },
-    { "swap", OP_SWAP },
-    { "dup", OP_DUP },
-    { "words", OP_WORDS },
-    { "drop", OP_DROP },
-    { "=", OP_EQUAL },
-    { "negate", OP_NEGATE },
-    { "delay", OP_DELAY },
-    { "pinwrite", OP_PINWRITE },
-    { "pinmode", OP_PINMODE },
-    { "dis", OP_DISASM },
-    { "if", OP_IF },
-    { "else", OP_ELSE },
-    { "then", OP_THEN },
-    { "begin", OP_BEGIN },
-    { "until", OP_UNTIL },
-    { "emit", OP_EMIT },
-    { NULL, 0 },
-  };
   int i;
 
   for (i = 0; default_words[i].name; i++) {
@@ -137,21 +179,22 @@ void word_init()
   }
 
   for (; i < MAX_WORDS; i++) {
-    words[i].name = NULL;
-    words[i].p.opcode = 0;
+    words[i].name.internal = NULL;
+    words[i].param.opcode = 0;
   }
-}
-
-const char *word_get_name(int id)
-{
-  return (id > wc) ? "nil" : words[id].name;
 }
 
 int word_get_id(const char *name)
 {
   int i;
   for (i = wc; i >= 0; i--) {
-    if (!strcmp(name, words[i].name)) return i;
+    if (words[i].type == WT_OPCODE) {
+      if (!strcmp_P(name, words[i].name.internal))
+        return i;
+    } else {
+      if (!strcmp(name, words[i].name.user))
+        return i;
+    }
   }
   return -1;
 }
@@ -169,10 +212,19 @@ int word_get_id_from_opcode(unsigned char opcode)
 {
   int i;
   for (i = wc; i >= 0; i--) {
-    if (words[i].t == WT_OPCODE && words[i].p.opcode == opcode)
+    if (words[i].type == WT_OPCODE && words[i].param.opcode == opcode)
       return i;
   }
   return -1;
+}
+
+void word_print_name(int wid)
+{
+    if (words[wid].type == WT_OPCODE) {
+      serial_print_P((char*)words[wid].name.internal);
+    } else {
+      Serial.print(words[wid].name.user);
+    }
 }
 
 void disasm()
@@ -180,21 +232,21 @@ void disasm()
   int i;
   
   for (i = 0; i < pc; i++) {
-
     int wid = word_get_id_from_opcode(program[i].opcode);
     Serial.print(i);
     Serial.print(' ');
     if (wid < 0) {
-      Serial.print((char*[]){"number", "call", "ret", "print"}[program[i].opcode]);
+      char hidden_ops[] PROGMEM = "num\0wrd\0ret\0prn";
+      serial_print_P(&hidden_ops[program[i].opcode * 4]);
       if (program[i].opcode == OP_NUM) {
         Serial.print(' ');
         Serial.print(program[i].param);
       } else if (program[i].opcode == OP_CALL) {
         Serial.print(' ');
-        Serial.print(words[program[i].param].name);
+        word_print_name(program[i].param);
       }
     } else {
-      Serial.print(words[wid].name);
+      word_print_name(wid);
     }
     if (program[i].opcode == OP_IF
         || program[i].opcode == OP_ELSE
@@ -208,7 +260,7 @@ void disasm()
       Serial.print(' ');
       Serial.print('#');
       Serial.print(' ');
-      Serial.print(words[curwordid].name);
+      word_print_name(curwordid);
     }
     Serial.println();
   }
@@ -220,6 +272,16 @@ void stack_swap()
   tmp = stack[sp];
   stack[sp] = stack[idx];
   stack[idx] = tmp;
+}
+
+int free_mem() {
+  extern unsigned int __bss_end;
+  extern unsigned int __heap_start;
+  extern void *__brkval;
+  int dummy;
+  if((int)__brkval == 0)
+     return ((int)&dummy) - ((int)&__bss_end);
+  return ((int)&dummy) - ((int)__brkval);
 }
 
 void call(int entry);
@@ -270,6 +332,9 @@ void eval_code(unsigned char opcode, int param, char mode)
       case OP_DROP:
         stack_pop();
         break;
+      case OP_FREEMEM:
+        stack_push(free_mem());
+        break;
       case OP_DUP:
         stack_push(stack[sp]);
         break;
@@ -295,7 +360,7 @@ void eval_code(unsigned char opcode, int param, char mode)
         {
           int i;
           for (i = 0; i <= wc; i++) {
-            Serial.print(words[i].name);
+            word_print_name(i);
             Serial.print(' ');
           }
           Serial.println();
@@ -313,15 +378,15 @@ void eval_code(unsigned char opcode, int param, char mode)
         break;
       case OP_CALL:
         {
-          if (words[param].t == WT_OPCODE) {
-            eval_code(words[param].p.opcode, param, mode);
+          if (words[param].type == WT_OPCODE) {
+            eval_code(words[param].param.opcode, param, mode);
           } else {
-            call(words[param].p.entry);
+            call(words[param].param.entry);
           }
         }
         break;
       default:
-        Serial.print("Unimplemented opcode: ");
+        serial_print_P(PSTR("Unimplemented opcode: "));
         Serial.println((int)opcode);
     }
   }
@@ -351,39 +416,25 @@ void call(int entry)
   }
 }
 
-int error(const char *msg)
+int error(char *msg)
 {
   bufidx = 0;
-  Serial.print('E');
-  Serial.print('r');
-  Serial.print('r');
-  Serial.print(' ');
-  Serial.println(msg);
+  serial_print_P(PSTR("Error: "));
+  serial_print_P(msg);
+  Serial.print(':');
   return 0;
 }
 
-int error(const char *msg, char *param)
+int error(char *msg, char param)
 {
-  bufidx = 0;
-  Serial.print('E');
-  Serial.print('r');
-  Serial.print('r');
-  Serial.print(' ');
-  Serial.print(msg);
-  Serial.print(':');
+  error(msg);
   Serial.println(param);
   return 0;
 }
 
-int error(const char *msg, char param)
+int error(char *msg, char *param)
 {
-  bufidx = 0;
-  Serial.print('E');
-  Serial.print('r');
-  Serial.print('r');
-  Serial.print(' ');
-  Serial.print(msg);
-  Serial.print(':');
+  error(msg);
   Serial.println(param);
   return 0;
 }
@@ -423,7 +474,7 @@ int feed_char(char ch)
           }
           return 1;
         }
-        return error("Word already defined", buffer);
+        return error(PSTR("Word already defined"), buffer);
       } else {
         return 1;
       }
@@ -439,24 +490,24 @@ int feed_char(char ch)
       if (bufidx > 0) {
         buffer[bufidx] = 0;
         int wid = word_get_id(buffer);
-        if (wid == -1) return error("Undefined word", buffer);
-        if (words[wid].t == WT_OPCODE) {
-          if (mode == 1 && !strcmp(buffer, "if")) {
+        if (wid == -1) return error(PSTR("Undefined word"), buffer);
+        if (words[wid].type == WT_OPCODE) {
+          if (mode == 1 && !strcmp_P(buffer, PSTR("if"))) {
             stack_push(pc);
             eval_code(OP_IF, 0, mode);
-          } else if (mode == 1 && !strcmp(buffer, "else")) {
+          } else if (mode == 1 && !strcmp_P(buffer, PSTR("else"))) {
             program[stack_pop()].param = pc;
             stack_push(pc);
             eval_code(OP_ELSE, 0, mode);
-          } else if (mode == 1 && !strcmp(buffer, "then")) {
+          } else if (mode == 1 && !strcmp_P(buffer, PSTR("then"))) {
             program[stack_pop()].param = pc;
             eval_code(OP_THEN, 0, mode);
-          } else if (mode == 1 && !strcmp(buffer, "begin")) {
+          } else if (mode == 1 && !strcmp_P(buffer, PSTR("begin"))) {
             stack_push(pc);
-          } else if (mode == 1 && !strcmp(buffer, "until")) {
+          } else if (mode == 1 && !strcmp_P(buffer, PSTR("until"))) {
             eval_code(OP_UNTIL, stack_pop(), mode);
           } else {
-            eval_code(words[wid].p.opcode, 0, mode);
+            eval_code(words[wid].param.opcode, 0, mode);
           }
         } else {
           eval_code(OP_CALL, wid, mode);
@@ -468,13 +519,13 @@ int feed_char(char ch)
           state = STATE_INITIAL;
         }
       } else if (ch != ';' && !isspace(ch)) {
-        return error("Expecting word name");
+        return error(PSTR("Expecting word name"));
       } else if (ch == ';') {
         eval_code(OP_RET, 0, mode);
         state = STATE_INITIAL;
       }
     } else if (ch == ':') {
-      if (mode == 1) return error("Unexpected character: :");
+      if (mode == 1) return error(PSTR("Unexpected character: :"));
       bufidx = 0;
       state = STATE_DEFWORD;
       mode = 1;
@@ -486,7 +537,7 @@ int feed_char(char ch)
     if (isdigit(ch)) {
       buffer[bufidx++] = ch;
     } else if (ch == ':') {
-      return error("Unexpected character: :");
+      return error(PSTR("Unexpected character: :"));
     } else {
       if (bufidx > 0) {
         buffer[bufidx] = 0;
@@ -503,7 +554,7 @@ int feed_char(char ch)
           state = STATE_INITIAL;
         }
       } else {
-        return error("This should not happen");
+        return error(PSTR("This should not happen"));
       }
     }
     return 1;
@@ -514,7 +565,9 @@ int feed_char(char ch)
 inline void setup()
 {
   Serial.begin(9600);
-  Serial.println("FINF 0.1.6");
+  serial_print_P(PSTR("FINF 0.1.6 - "));
+  Serial.print(free_mem());
+  serial_print_P(PSTR(" bytes free\n"));
   wc = -1;
   pc = 0;
   word_init();

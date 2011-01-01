@@ -6,8 +6,8 @@
  */
 #include <avr/pgmspace.h>
 
-#define MAX_WORDS 32
-#define MAX_PROGRAM 48
+#define MAX_WORDS 64
+#define MAX_PROGRAM 64
 #define MAX_STACK 16
 
 #define WT_OPCODE 0

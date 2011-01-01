@@ -4,9 +4,9 @@
  * Copyright (c) 2005-2010 Leandro A. F. Pereira <leandro@tia.mat.br>
  * Licensed under GNU GPL version 2.
  */
-#define MAX_WORDS 48
+#define MAX_WORDS 32
 #define MAX_PROGRAM 48
-#define MAX_STACK 18
+#define MAX_STACK 16
 
 #define WT_OPCODE 0
 #define WT_USER 1
@@ -31,7 +31,7 @@ struct Word {
   const char *name;
   union {
     unsigned char opcode;
-    int entry;
+    unsigned char entry;
   } p;
   unsigned char t: 1;
 }  __attribute__((packed));
@@ -304,7 +304,6 @@ void eval_code(unsigned char opcode, int param, char mode)
       case OP_SHOWSTACK:
         {
           int i;
-          Serial.print("\nStack: ");
           for (i = sp; i > 0; i--) {
             Serial.print((int)stack[i]);
             Serial.print(' ');  
@@ -355,7 +354,10 @@ void call(int entry)
 int error(const char *msg)
 {
   bufidx = 0;
-  Serial.print("Error: ");
+  Serial.print('E');
+  Serial.print('r');
+  Serial.print('r');
+  Serial.print(' ');
   Serial.println(msg);
   return 0;
 }
@@ -363,9 +365,12 @@ int error(const char *msg)
 int error(const char *msg, char *param)
 {
   bufidx = 0;
-  Serial.print("Error: ");
+  Serial.print('E');
+  Serial.print('r');
+  Serial.print('r');
+  Serial.print(' ');
   Serial.print(msg);
-  Serial.print(": ");
+  Serial.print(':');
   Serial.println(param);
   return 0;
 }
@@ -373,9 +378,12 @@ int error(const char *msg, char *param)
 int error(const char *msg, char param)
 {
   bufidx = 0;
-  Serial.print("Error: ");
+  Serial.print('E');
+  Serial.print('r');
+  Serial.print('r');
+  Serial.print(' ');
   Serial.print(msg);
-  Serial.print(": ");
+  Serial.print(':');
   Serial.println(param);
   return 0;
 }

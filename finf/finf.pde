@@ -353,7 +353,6 @@ void stack_swap()
 
 int free_mem() {
   extern unsigned int __bss_end;
-  extern unsigned int __heap_start;
   extern void *__brkval;
   int dummy;
   if((int)__brkval == 0)

@@ -109,6 +109,7 @@ Program program[MAX_PROGRAM];
 Word words[MAX_WORDS];
 int stack[MAX_STACK];
 char wc = -1, sp = 0, pc = 0, bufidx = 0, mode = 0, state = STATE_INITIAL;
+char last_pc, last_wc;
 char buffer[16];
 
 #ifndef isdigit
@@ -285,6 +286,36 @@ int free_mem() {
 
 void call(int entry);
 
+int error(char *msg, char mode)
+{
+  bufidx = 0;
+  if (mode == 1) {
+    pc = last_pc;
+    if (wc != last_wc) {
+      free(words[wc].name.user);
+      last_wc = --wc;
+    }
+  }
+  serial_print_P(PSTR("Error: "));
+  serial_print_P(msg);
+  Serial.print(':');
+  return 0;
+}
+
+int error(char *msg, char param, char mode)
+{
+  error(msg, mode);
+  Serial.println(param);
+  return 0;
+}
+
+int error(char *msg, char *param, char mode)
+{
+  error(msg, mode);
+  Serial.println(param);
+  return 0;
+}
+
 void eval_code(unsigned char opcode, int param, char mode)
 {
   if (mode == 1) {
@@ -415,29 +446,6 @@ void call(int entry)
   }
 }
 
-int error(char *msg)
-{
-  bufidx = 0;
-  serial_print_P(PSTR("Error: "));
-  serial_print_P(msg);
-  Serial.print(':');
-  return 0;
-}
-
-int error(char *msg, char param)
-{
-  error(msg);
-  Serial.println(param);
-  return 0;
-}
-
-int error(char *msg, char *param)
-{
-  error(msg);
-  Serial.println(param);
-  return 0;
-}
-
 int feed_char(char ch)
 {
   switch (state) {
@@ -445,6 +453,8 @@ int feed_char(char ch)
     bufidx = 0;
     if (ch == ':') {
       state = STATE_DEFWORD;
+      last_pc = pc;
+      last_wc = wc;
       mode = 1;
     } else if (isspace(ch)) {
       /* do nothing */
@@ -473,7 +483,7 @@ int feed_char(char ch)
           }
           return 1;
         }
-        return error(PSTR("Word already defined"), buffer);
+        return error(PSTR("Word already defined"), buffer, mode);
       } else {
         return 1;
       }
@@ -489,7 +499,7 @@ int feed_char(char ch)
       if (bufidx > 0) {
         buffer[bufidx] = 0;
         int wid = word_get_id(buffer);
-        if (wid == -1) return error(PSTR("Undefined word"), buffer);
+        if (wid == -1) return error(PSTR("Undefined word"), buffer, mode);
         if (words[wid].type == WT_OPCODE) {
           if (mode == 1 && !strcmp_P(buffer, PSTR("if"))) {
             stack_push(pc);
@@ -518,13 +528,13 @@ int feed_char(char ch)
           state = STATE_INITIAL;
         }
       } else if (ch != ';' && !isspace(ch)) {
-        return error(PSTR("Expecting word name"));
+        return error(PSTR("Expecting word name"), mode);
       } else if (ch == ';') {
         eval_code(OP_RET, 0, mode);
         state = STATE_INITIAL;
       }
     } else if (ch == ':') {
-      if (mode == 1) return error(PSTR("Unexpected character: :"));
+      if (mode == 1) return error(PSTR("Unexpected character: :"), mode);
       bufidx = 0;
       state = STATE_DEFWORD;
       mode = 1;
@@ -536,7 +546,7 @@ int feed_char(char ch)
     if (isdigit(ch)) {
       buffer[bufidx++] = ch;
     } else if (ch == ':') {
-      return error(PSTR("Unexpected character: :"));
+      return error(PSTR("Unexpected character: :"), mode);
     } else {
       if (bufidx > 0) {
         buffer[bufidx] = 0;
@@ -553,7 +563,7 @@ int feed_char(char ch)
           state = STATE_INITIAL;
         }
       } else {
-        return error(PSTR("This should not happen"));
+        return error(PSTR("This should not happen"), mode);
       }
     }
     return 1;

@@ -684,6 +684,13 @@ void loop()
         term_buffer[term_bufidx--] = '\0';
         backspace();
         break;
+      case 12:   /* Ctrl+L */
+        serial_print_P(PSTR("\033[H\033[2J"));
+        prompt();
+        for (char c = 0; c < term_bufidx; c++) {
+          Serial.print(term_buffer[c]);
+        }
+        break;
       default:
         if (term_bufidx >= (sizeof(term_buffer) - 2)) {
           beep();

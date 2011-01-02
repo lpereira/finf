@@ -117,6 +117,7 @@ int stack[MAX_STACK];
 char wc = -1, sp = 0, pc = 0, bufidx = 0, mode = 0, state = STATE_INITIAL;
 char last_pc, last_wc;
 char buffer[16];
+char open_if = 0, open_begin = 0;
 
 #ifdef TERMINAL
 char term_buffer[32];
@@ -153,6 +154,14 @@ int error(char *msg, char mode)
   bufidx = 0;
   if (mode == 1) {
     state = STATE_INITIAL;
+    while (open_if > 0) {
+      stack_pop();
+      open_if--;
+    }
+    while (open_begin > 0) {
+      stack_pop();
+      open_begin--;
+    }
     pc = last_pc;
     if (wc != last_wc) {
       free(words[wc].name.user);
@@ -498,6 +507,17 @@ void call(int entry)
   }
 }
 
+int check_open_structures(void)
+{
+  if (open_if) {
+    return error(PSTR("if without then"), mode);
+  }
+  if (open_begin) {
+    return error(PSTR("begin without until"), mode);
+  }
+  return 1;
+}
+
 int feed_char(char ch)
 {
   switch (state) {
@@ -559,17 +579,24 @@ int feed_char(char ch)
           if (mode == 1 && !strcmp_P(buffer, PSTR("if"))) {
             stack_push(pc);
             eval_code(OP_IF, 0, mode);
+            open_if++;
           } else if (mode == 1 && !strcmp_P(buffer, PSTR("else"))) {
+            if (!open_if) {
+              return error(PSTR("else without if"), 0);
+            }
             program[stack_pop()].param = pc;
             stack_push(pc);
             eval_code(OP_ELSE, 0, mode);
           } else if (mode == 1 && !strcmp_P(buffer, PSTR("then"))) {
             program[stack_pop()].param = pc;
             eval_code(OP_THEN, 0, mode);
+            open_if--;
           } else if (mode == 1 && !strcmp_P(buffer, PSTR("begin"))) {
             stack_push(pc);
+            open_begin++;
           } else if (mode == 1 && !strcmp_P(buffer, PSTR("until"))) {
             eval_code(OP_UNTIL, stack_pop(), mode);
+            open_begin--;
           } else {
             eval_code(words[wid].param.opcode, 0, mode);
           }
@@ -578,13 +605,14 @@ int feed_char(char ch)
         }
         bufidx = 0;
         if (ch == ';') {
-          /* FIXME check if there is an open if/else/then block */
+          if (!check_open_structures()) return 0;
           eval_code(OP_RET, 0, mode);
           state = STATE_INITIAL;
         }
       } else if (ch != ';' && !isspace(ch)) {
         return error(PSTR("Expecting word name"), mode);
       } else if (ch == ';') {
+        if (!check_open_structures()) return 0;
         eval_code(OP_RET, 0, mode);
         state = STATE_INITIAL;
       }
@@ -609,6 +637,7 @@ int feed_char(char ch)
         bufidx = 0;
         if (mode == 1) {
           if (ch == ';') {
+            if (!check_open_structures()) return 0;
             eval_code(OP_RET, 0, mode);
             state = STATE_INITIAL;
           } else {

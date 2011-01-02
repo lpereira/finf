@@ -139,16 +139,58 @@ int isspace(unsigned char ch)
 
 void serial_print_P(char *msg)
 {
+#ifdef TERMINAL
+  char buf[32];
+#else
   char buf[20];
-  strncpy_P(buf, msg, sizeof(buf));
+#endif
+strncpy_P(buf, msg, sizeof(buf));
   Serial.print(buf);
+}
+
+int error(char *msg, char mode)
+{
+  bufidx = 0;
+  if (mode == 1) {
+    state = STATE_INITIAL;
+    pc = last_pc;
+    if (wc != last_wc) {
+      free(words[wc].name.user);
+      last_wc = --wc;
+    }
+  }
+#ifdef TERMINAL
+  serial_print_P(PSTR("\033[40;31;1mError: "));
+  serial_print_P(PSTR("\033[40;33m"));
+  serial_print_P(msg);
+  serial_print_P(PSTR("\033[0m"));
+#else
+  serial_print_P(PSTR("Error: "));
+  serial_print_P(msg);
+#endif /* TERMINAL */
+  Serial.print(':');
+  return 0;
+}
+
+int error(char *msg, char param, char mode)
+{
+  error(msg, mode);
+  Serial.println(param);
+  return 0;
+}
+
+int error(char *msg, char *param, char mode)
+{
+  error(msg, mode);
+  Serial.println(param);
+  return 0;
 }
 
 void stack_push(int value)
 {
   stack[++sp] = value;
   if (sp > MAX_STACK) {
-    serial_print_P(PSTR("Stack overflow"));
+    error(PSTR("Stack overflow"), 0);
     for(;;);
   }
 }
@@ -156,7 +198,7 @@ void stack_push(int value)
 int stack_pop(void)
 {
   if (sp < 0) {
-    serial_print_P(PSTR("Stack underflow\r\n"));
+    error(PSTR("Stack underflow"), 0);
     return 0;
   }
   return stack[sp--];
@@ -250,6 +292,9 @@ void disasm()
     Serial.print((int)i);
     Serial.print(' ');
     if (wid < 0) {
+#ifdef TERMINAL
+      serial_print_P(PSTR("\033[40;36;1m"));
+#endif /* TERMINAL */
       serial_print_P(&hidden_ops_str[program[i].opcode * 4]);
       if (program[i].opcode == OP_NUM) {
         Serial.print(' ');
@@ -259,8 +304,14 @@ void disasm()
         word_print_name(program[i].param);
       }
     } else {
+#ifdef TERMINAL
+      serial_print_P(PSTR("\033[40;36m"));
+#endif /* TERMINAL */
       word_print_name(wid);
     }
+#ifdef TERMINAL
+      serial_print_P(PSTR("\033[0m"));
+#endif /* TERMINAL */
     if (program[i].opcode == OP_IF
         || program[i].opcode == OP_ELSE
         || program[i].opcode == OP_UNTIL) {
@@ -270,8 +321,14 @@ void disasm()
     }
     int curwordid = word_get_id_from_pc(i);
     if (curwordid > 0) {
+#ifdef TERMINAL
+      serial_print_P(PSTR("\033[40;33m ("));
+      word_print_name(curwordid);
+      serial_print_P(PSTR(")\033[0m"));
+#else
       serial_print_P(PSTR(" # "));
       word_print_name(curwordid);
+#endif
     }
     Serial.println();
   }
@@ -296,36 +353,6 @@ int free_mem() {
 }
 
 void call(int entry);
-
-int error(char *msg, char mode)
-{
-  bufidx = 0;
-  if (mode == 1) {
-    pc = last_pc;
-    if (wc != last_wc) {
-      free(words[wc].name.user);
-      last_wc = --wc;
-    }
-  }
-  serial_print_P(PSTR("Error: "));
-  serial_print_P(msg);
-  Serial.print(':');
-  return 0;
-}
-
-int error(char *msg, char param, char mode)
-{
-  error(msg, mode);
-  Serial.println(param);
-  return 0;
-}
-
-int error(char *msg, char *param, char mode)
-{
-  error(msg, mode);
-  Serial.println(param);
-  return 0;
-}
 
 void eval_code(unsigned char opcode, int param, char mode)
 {
@@ -405,7 +432,17 @@ void eval_code(unsigned char opcode, int param, char mode)
         {
           int i;
           for (i = 0; i <= wc; i++) {
+#ifdef TERMINAL
+            if (words[i].type == WT_OPCODE) {
+              serial_print_P(PSTR("\033[40;36m"));
+            } else {
+              serial_print_P(PSTR("\033[40;33m"));
+            }
+#endif /* TERMINAL */
             word_print_name(i);
+#ifdef TERMINAL
+            serial_print_P(PSTR("\033[0m"));
+#endif /* TERMINAL */
             Serial.print(' ');
           }
           Serial.println();
@@ -592,7 +629,11 @@ int feed_char(char ch)
 #ifdef TERMINAL
 void prompt()
 {
-  serial_print_P(PSTR("> "));
+  if (state == STATE_ADDCODE && mode == 1) {
+    serial_print_P(PSTR("\033[40;32m...\033[0m "));
+  } else {
+    serial_print_P(PSTR("\033[40;32;1m>>>\033[0m "));
+  }
 }
 
 void clear_buffer()
@@ -615,14 +656,19 @@ void process_buffer()
   }
   prompt();
 }
+#define COLOR "\033[40;32m"
+#define ENDCOLOR "\033[0m"
+#else
+#define COLOR
+#define ENDCOLOR
 #endif /* TERMINAL */
 
 inline void setup()
 {
   Serial.begin(9600);
-  serial_print_P(PSTR("FINF 0.1.6 - "));
+  serial_print_P(PSTR(COLOR "FINF 0.1.6 - "));
   Serial.print(free_mem());
-  serial_print_P(PSTR(" bytes free\r\n"));
+  serial_print_P(PSTR(" bytes free\r\n" ENDCOLOR));
   word_init();
 #ifdef TERMINAL
   clear_buffer();

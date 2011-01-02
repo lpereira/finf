@@ -121,7 +121,7 @@ int isdigit(unsigned char ch)
 #ifndef isspace
 int isspace(unsigned char ch)
 {
-  return !!strchr(" \t\r\n", ch);
+  return !!strchr_P(PSTR(" \t\r\r\n"), ch);
 }
 #endif
 
@@ -144,7 +144,7 @@ void stack_push(int value)
 int stack_pop(void)
 {
   if (sp < 0) {
-    serial_print_P(PSTR("Stack underflow\n"));
+    serial_print_P(PSTR("Stack underflow\r\n"));
     return 0;
   }
   return stack[sp--];
@@ -170,7 +170,7 @@ int word_new_opcode(PGM_P name, char opcode)
 
 void word_init()
 {
-  int i;
+  char i;
 
   for (i = 0; ; i++) {
     char *name = (char *)pgm_read_word(&default_words[i].name);
@@ -187,7 +187,7 @@ void word_init()
 
 int word_get_id(const char *name)
 {
-  int i;
+  char i;
   for (i = wc; i >= 0; i--) {
     if (words[i].type == WT_OPCODE) {
       if (!strcmp_P(name, words[i].name.internal))
@@ -202,7 +202,7 @@ int word_get_id(const char *name)
 
 int word_get_id_from_pc(int pc)
 {
-  int i;
+  char i;
   for (i = wc; i >= 0; i--) {
     if (words[i].type == WT_USER && words[i].param.entry == pc)
       return i;
@@ -212,7 +212,7 @@ int word_get_id_from_pc(int pc)
 
 int word_get_id_from_opcode(unsigned char opcode)
 {
-  int i;
+  char i;
   for (i = wc; i >= 0; i--) {
     if (words[i].type == WT_OPCODE && words[i].param.opcode == opcode)
       return i;
@@ -222,20 +222,20 @@ int word_get_id_from_opcode(unsigned char opcode)
 
 void word_print_name(int wid)
 {
-    if (words[wid].type == WT_OPCODE) {
-      serial_print_P((char*)words[wid].name.internal);
-    } else {
-      Serial.print(words[wid].name.user);
-    }
+  if (words[wid].type == WT_OPCODE) {
+    serial_print_P((char*)words[wid].name.internal);
+  } else {
+    Serial.print(words[wid].name.user);
+  }
 }
 
 void disasm()
 {
-  int i;
+  char i;
   
   for (i = 0; i < pc; i++) {
     int wid = word_get_id_from_opcode(program[i].opcode);
-    Serial.print(i);
+    Serial.print((int)i);
     Serial.print(' ');
     if (wid < 0) {
       serial_print_P(&hidden_ops_str[program[i].opcode * 4]);
@@ -258,9 +258,7 @@ void disasm()
     }
     int curwordid = word_get_id_from_pc(i);
     if (curwordid > 0) {
-      Serial.print(' ');
-      Serial.print('#');
-      Serial.print(' ');
+      serial_print_P(PSTR(" # "));
       word_print_name(curwordid);
     }
     Serial.println();
@@ -269,7 +267,7 @@ void disasm()
 
 void stack_swap()
 {
-  int tmp, idx = sp - 1;
+  char tmp, idx = sp - 1;
   tmp = stack[sp];
   stack[sp] = stack[idx];
   stack[idx] = tmp;

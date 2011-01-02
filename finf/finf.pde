@@ -1,7 +1,7 @@
 /*
  * FINF - FINF Is Not Forth
- * Version 0.1.6
- * Copyright (c) 2005-2010 Leandro A. F. Pereira <leandro@tia.mat.br>
+ * Version 0.1.7
+ * Copyright (c) 2005-2011 Leandro A. F. Pereira <leandro@tia.mat.br>
  * Licensed under GNU GPL version 2.
  */
 #include <avr/pgmspace.h>
@@ -666,7 +666,7 @@ void process_buffer()
 inline void setup()
 {
   Serial.begin(9600);
-  serial_print_P(PSTR(COLOR "FINF 0.1.6 - "));
+  serial_print_P(PSTR(COLOR "FINF 0.1.7 - "));
   Serial.print(free_mem());
   serial_print_P(PSTR(" bytes free\r\n" ENDCOLOR));
   word_init();

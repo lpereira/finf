@@ -360,7 +360,7 @@ int free_mem() {
   return ((int)&dummy) - ((int)__brkval);
 }
 
-void call(int entry);
+unsigned char open_scope(unsigned char entry, char end_opcode);
 
 void eval_code(unsigned char opcode, int param, char mode)
 {
@@ -435,6 +435,7 @@ void eval_code(unsigned char opcode, int param, char mode)
       case OP_THEN:
       case OP_BEGIN:
       case OP_UNTIL:
+      case OP_RET:
         break;
       case OP_WORDS:
         {
@@ -471,7 +472,7 @@ void eval_code(unsigned char opcode, int param, char mode)
           if (words[param].type == WT_OPCODE) {
             eval_code(words[param].param.opcode, param, mode);
           } else {
-            call(words[param].param.entry);
+            open_scope(words[param].param.entry, OP_RET);
           }
         }
         break;
@@ -482,17 +483,17 @@ void eval_code(unsigned char opcode, int param, char mode)
   }
 }
 
-void call(int entry)
+unsigned char open_scope(unsigned char entry, char end_opcode)
 {
-  while (program[entry].opcode != OP_RET) {
+  while (program[entry].opcode != end_opcode) {
     if (program[entry].opcode == OP_IF) {
       if (stack_pop()) {
-        entry++;
+        entry = open_scope(entry + 1, OP_ELSE);
       } else {
-        entry = program[entry].param + 1;
+        entry = open_scope(program[entry].param + 1, OP_THEN);
       }
     } else if (program[entry].opcode == OP_ELSE) {
-      entry = program[entry].param;
+      entry = open_scope(program[entry].param, OP_THEN);
     } else if (program[entry].opcode == OP_UNTIL) {
       if (stack_pop()) {
         entry = program[entry].param;
@@ -504,6 +505,7 @@ void call(int entry)
       entry++;
     }
   }
+  return entry;
 }
 
 int check_open_structures(void)
@@ -715,7 +717,7 @@ void backspace()
   serial_print_P(PSTR("\b \b"));
 }
 
-void loop()
+inline void loop()
 {
   if (Serial.available() > 0) {
     unsigned ch = Serial.read();

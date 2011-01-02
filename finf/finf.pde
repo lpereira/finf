@@ -319,6 +319,10 @@ int error(char *msg, char *param, char mode)
 void eval_code(unsigned char opcode, int param, char mode)
 {
   if (mode == 1) {
+    if (pc >= MAX_PROGRAM) {
+      error(PSTR("Max program size reached"), mode);
+      return;
+    }
     program[pc].opcode = opcode;
     program[pc++].param = param;
   } else {
@@ -452,6 +456,9 @@ int feed_char(char ch)
   case STATE_INITIAL:
     bufidx = 0;
     if (ch == ':') {
+      if (wc >= MAX_WORDS) {
+        return error(PSTR("Maximum number of words reached"), mode);
+      }
       state = STATE_DEFWORD;
       last_pc = pc;
       last_wc = wc;

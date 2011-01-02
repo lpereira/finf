@@ -6,6 +6,12 @@
  */
 #include <avr/pgmspace.h>
 
+/*
+ * Uncomment if building to use on a terminal program
+ * (instead of Arduino's Serial Monitor)
+ */
+//#define TERMINAL 1
+
 #define MAX_WORDS 64
 #define MAX_PROGRAM 64
 #define MAX_STACK 16
@@ -111,6 +117,11 @@ int stack[MAX_STACK];
 char wc = -1, sp = 0, pc = 0, bufidx = 0, mode = 0, state = STATE_INITIAL;
 char last_pc, last_wc;
 char buffer[16];
+
+#ifdef TERMINAL
+char term_buffer[32];
+char term_bufidx = 0;
+#endif /* TERMINAL */
 
 #ifndef isdigit
 int isdigit(unsigned char ch)
@@ -578,15 +589,113 @@ int feed_char(char ch)
   return 0;
 }
 
+#ifdef TERMINAL
+void prompt()
+{
+  serial_print_P(PSTR("> "));
+}
+
+void clear_buffer()
+{
+  term_bufidx = 0;
+  memset(term_buffer, 0, sizeof(term_buffer));
+}
+
+void process_buffer()
+{
+  if (term_bufidx) {
+    Serial.println();
+    for (char i = 0; i < term_bufidx; i++) {
+      feed_char(term_buffer[i]);
+    }
+    feed_char(' ');
+    clear_buffer();
+  } else {
+    serial_print_P(PSTR("\r\n"));
+  }
+  prompt();
+}
+#endif /* TERMINAL */
+
 inline void setup()
 {
   Serial.begin(9600);
   serial_print_P(PSTR("FINF 0.1.6 - "));
   Serial.print(free_mem());
-  serial_print_P(PSTR(" bytes free\n"));
+  serial_print_P(PSTR(" bytes free\r\n"));
   word_init();
+#ifdef TERMINAL
+  clear_buffer();
+  prompt();
+#endif /* TERMINAL */
 }
 
+#ifdef TERMINAL
+void beep()
+{
+  Serial.print('\a');
+}
+
+void backspace()
+{
+  serial_print_P(PSTR("\b \b"));
+}
+
+void loop()
+{
+  if (Serial.available() > 0) {
+    unsigned ch = Serial.read();
+    switch (ch) {
+      case '\r':  /* Carriage return */
+      case '\n':  /* Linefeed */
+        process_buffer();
+        break;
+      case 3:     /* Ctrl+C */
+        serial_print_P(PSTR("^C\n"));
+        clear_buffer();
+        prompt();
+        break;
+      case 23:      /* Ctrl+W */
+        if (term_bufidx == 0) {
+          beep();
+          return;
+        }
+        for (char i = term_bufidx; i >= 0; i--) {
+          if (term_buffer[i] == ' ' || i == 0) {
+            term_buffer[i] = '\0';
+            for (char j = 0; j < (term_bufidx - i); j++) {
+              backspace();
+            }
+            term_bufidx = i;
+            return;
+          }
+        }
+        break;
+      case 27: /* Esc */
+      case '\t':   /* Tab */
+        beep();
+        break;
+      case '\b':  /* Ctrl+H */
+      case 127:   /* Backspace */
+        if (term_bufidx == 0) {
+          beep();
+          return;
+        }
+        term_buffer[term_bufidx--] = '\0';
+        backspace();
+        break;
+      default:
+        if (term_bufidx >= (sizeof(term_buffer) - 2)) {
+          beep();
+          return;
+        }
+        term_buffer[term_bufidx++] = ch;
+        term_buffer[term_bufidx] = '\0';
+        Serial.print((char)ch);
+    }
+  }
+}
+#else
 inline void loop()
 {
   if (Serial.available() > 0) {
@@ -595,4 +704,5 @@ inline void loop()
     feed_char(ch);
   }
 }
+#endif /* TERMINAL */
 

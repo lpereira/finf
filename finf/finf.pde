@@ -697,7 +697,7 @@ void loop()
         process_buffer();
         break;
       case 3:     /* Ctrl+C */
-        serial_print_P(PSTR("^C\n"));
+        serial_print_P(PSTR("^C\r\n"));
         clear_buffer();
         prompt();
         break;

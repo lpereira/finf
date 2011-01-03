@@ -520,6 +520,11 @@ unsigned char open_scope(unsigned char entry, char end_opcode)
       eval_code(program[entry].opcode, program[entry].param, 2);
       entry++;
     }
+    if (Serial.available() > 0 && Serial.read() == 3) {
+      /* Ctrl+C pressed? */
+      serial_print_P(PSTR("\r\nCtrl+C pressed\r\n"));
+      break;
+    }
   }
   return entry;
 }

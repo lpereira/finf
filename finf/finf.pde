@@ -8,7 +8,8 @@
 
 /*
  * Uncomment if building to use on a terminal program
- * (instead of Arduino's Serial Monitor)
+ * (instead of Arduino's Serial Monitor) -- uses ~800bytes
+ * of flash + ~40bytes of RAM
  */
 //#define TERMINAL 1
 

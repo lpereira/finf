@@ -125,7 +125,8 @@ DefaultWord default_words[] PROGMEM = {
 Program program[MAX_PROGRAM];
 Word words[MAX_WORDS];
 int stack[MAX_STACK];
-char wc = -1, sp = 0, pc = 0, bufidx = 0, mode = 0, state = STATE_INITIAL;
+char wc = -1, sp = 0, bufidx = 0, mode = 0, state = STATE_INITIAL;
+unsigned char pc = 0, scratch_pc = 0;
 char last_pc, last_wc;
 char buffer[16];
 char open_if = 0, open_begin = 0, open_scratch = 0;
@@ -562,17 +563,18 @@ int check_open_structures(void)
 
 void open_scratch_program(void)
 {
-  open_scratch++;
-  stack_push(pc);
+  if (!open_scratch++) {
+    scratch_pc = pc;
+  }
 }
 
 void run_scratch_program(void)
 {
-  char scratch_entry = stack_pop();
-  eval_code(OP_RET, 0, mode);
-  open_scope(scratch_entry, OP_RET);
+  if (open_scratch == 1) {
+    eval_code(OP_RET, 0, mode);
+    open_scope(scratch_pc, OP_RET);
+  }
   open_scratch--;
-  pc = scratch_entry;
 }
 
 int feed_char(char ch)

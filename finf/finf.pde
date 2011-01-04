@@ -175,10 +175,8 @@ int error(char *msg, char mode)
       open_begin--;
     }
     if (open_scratch > 0) {
-      while (open_scratch > 0) {
-        pc = stack_pop();
-        open_scratch--;
-      }
+      pc = open_scratch;
+      open_scratch = 0;
     } else {
       pc = last_pc;
     }

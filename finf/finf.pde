@@ -132,7 +132,7 @@ char buffer[16];
 char open_if = 0, open_begin = 0, open_scratch = 0;
 
 #ifdef TERMINAL
-char term_buffer[32];
+char term_buffer[64];
 char term_bufidx = 0;
 #endif /* TERMINAL */
 

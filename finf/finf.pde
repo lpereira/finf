@@ -124,7 +124,7 @@ int stack[MAX_STACK];
 char wc = -1, sp = 0, pc = 0, bufidx = 0, mode = 0, state = STATE_INITIAL;
 char last_pc, last_wc;
 char buffer[16];
-char open_if = 0, open_begin = 0;
+char open_if = 0, open_begin = 0, open_scratch = 0;
 
 #ifdef TERMINAL
 char term_buffer[32];
@@ -169,7 +169,14 @@ int error(char *msg, char mode)
       stack_pop();
       open_begin--;
     }
-    pc = last_pc;
+    if (open_scratch > 0) {
+      while (open_scratch > 0) {
+        pc = stack_pop();
+        open_scratch--;
+      }
+    } else {
+      pc = last_pc;
+    }
     if (wc != last_wc) {
       free(words[wc].name.user);
       last_wc = --wc;
@@ -377,7 +384,7 @@ unsigned char open_scope(unsigned char entry, char end_opcode);
 
 void eval_code(unsigned char opcode, int param, char mode)
 {
-  if (mode == 1) {
+  if (mode == 1 || (open_scratch && mode != 3)) {
     if (pc >= MAX_PROGRAM) {
       error(PSTR("Max program size reached"), mode);
       return;
@@ -523,7 +530,7 @@ unsigned char open_scope(unsigned char entry, char end_opcode)
         entry++;
       }
     } else {
-      eval_code(program[entry].opcode, program[entry].param, 2);
+      eval_code(program[entry].opcode, program[entry].param, 2 + !!open_scratch);
       entry++;
     }
     if (Serial.available() > 0 && Serial.read() == 3) {
@@ -544,6 +551,21 @@ int check_open_structures(void)
     return error(PSTR("begin without until"), mode);
   }
   return 1;
+}
+
+void open_scratch_program(void)
+{
+  open_scratch++;
+  stack_push(pc);
+}
+
+void run_scratch_program(void)
+{
+  char scratch_entry = stack_pop();
+  eval_code(OP_RET, 0, mode);
+  open_scope(scratch_entry, OP_RET);
+  open_scratch--;
+  pc = scratch_entry;
 }
 
 int feed_char(char ch)
@@ -604,27 +626,42 @@ int feed_char(char ch)
         int wid = word_get_id(buffer);
         if (wid == -1) return error(PSTR("Undefined word"), buffer, mode);
         if (words[wid].type == WT_OPCODE) {
-          if (mode == 1 && !strcmp_P(buffer, PSTR("if"))) {
+          if (!strcmp_P(buffer, PSTR("if"))) {
+            if (mode == 2) {
+              open_scratch_program();
+            }
             stack_push(pc);
             eval_code(OP_IF, 0, mode);
             open_if++;
-          } else if (mode == 1 && !strcmp_P(buffer, PSTR("else"))) {
+          } else if (!strcmp_P(buffer, PSTR("else"))) {
             if (!open_if) {
               return error(PSTR("else without if"), 0);
             }
             program[stack_pop()].param = pc;
             stack_push(pc);
             eval_code(OP_ELSE, 0, mode);
-          } else if (mode == 1 && !strcmp_P(buffer, PSTR("then"))) {
+          } else if (!strcmp_P(buffer, PSTR("then"))) {
+            if (!open_if) {
+              return error(PSTR("then without if"), 0);
+            }
             program[stack_pop()].param = pc;
             eval_code(OP_THEN, 0, mode);
             open_if--;
-          } else if (mode == 1 && !strcmp_P(buffer, PSTR("begin"))) {
+            if (open_scratch > 0) {
+              run_scratch_program();
+            }
+          } else if (!strcmp_P(buffer, PSTR("begin"))) {
+            if (mode == 2) {
+              open_scratch_program();
+            }
             stack_push(pc);
             open_begin++;
-          } else if (mode == 1 && !strcmp_P(buffer, PSTR("until"))) {
+          } else if (!strcmp_P(buffer, PSTR("until"))) {
             eval_code(OP_UNTIL, stack_pop(), mode);
             open_begin--;
+            if (open_scratch > 0) {
+              run_scratch_program();
+            }
           } else {
             eval_code(words[wid].param.opcode, 0, mode);
           }
@@ -686,7 +723,7 @@ int feed_char(char ch)
 #ifdef TERMINAL
 void prompt()
 {
-  if (state == STATE_ADDCODE && mode == 1) {
+  if ((state == STATE_ADDCODE && mode == 1) || open_scratch) {
     serial_print_P(PSTR("\033[40;32m...\033[0m "));
   } else {
     serial_print_P(PSTR("\033[40;32;1m>>>\033[0m "));

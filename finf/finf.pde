@@ -137,14 +137,14 @@ char term_bufidx = 0;
 #endif /* TERMINAL */
 
 #ifndef isdigit
-int isdigit(unsigned char ch)
+char isdigit(unsigned char ch)
 {
   return ch >= '0' && ch <= '9';
 }
 #endif
 
 #ifndef isspace
-int isspace(unsigned char ch)
+char isspace(unsigned char ch)
 {
   return !!strchr_P(PSTR(" \t\r\r\n"), ch);
 }
@@ -161,7 +161,7 @@ strncpy_P(buf, msg, sizeof(buf));
   Serial.print(buf);
 }
 
-int error(char *msg, char mode)
+char error(char *msg)
 {
   bufidx = 0;
   if (mode == 1) {
@@ -198,16 +198,16 @@ int error(char *msg, char mode)
   return 0;
 }
 
-int error(char *msg, char param, char mode)
+char error(char *msg, char param)
 {
-  error(msg, mode);
+  error(msg);
   Serial.println(param);
   return 0;
 }
 
-int error(char *msg, char *param, char mode)
+char error(char *msg, char *param)
 {
-  error(msg, mode);
+  error(msg);
   Serial.println(param);
   return 0;
 }
@@ -216,7 +216,7 @@ void stack_push(int value)
 {
   stack[++sp] = value;
   if (sp > MAX_STACK) {
-    error(PSTR("Stack overflow"), 0);
+    error(PSTR("Stack overflow"));
     for(;;);
   }
 }
@@ -224,7 +224,7 @@ void stack_push(int value)
 int stack_pop(void)
 {
   if (sp < 0) {
-    error(PSTR("Stack underflow"), 0);
+    error(PSTR("Stack underflow"));
     return 0;
   }
   return stack[sp--];
@@ -383,13 +383,11 @@ int free_mem() {
   return ((int)&dummy) - ((int)__brkval);
 }
 
-unsigned char open_scope(unsigned char entry, char end_opcode);
-
 void eval_code(unsigned char opcode, int param, char mode)
 {
   if (mode == 1 || (open_scratch && mode != 3)) {
     if (pc >= MAX_PROGRAM) {
-      error(PSTR("Max program size reached"), mode);
+      error(PSTR("Max program size reached"));
       return;
     }
     program[pc].opcode = opcode;
@@ -551,10 +549,10 @@ unsigned char open_scope(unsigned char entry, char end_opcode)
 int check_open_structures(void)
 {
   if (open_if) {
-    return error(PSTR("if without then"), mode);
+    return error(PSTR("if without then"));
   }
   if (open_begin) {
-    return error(PSTR("begin without until"), mode);
+    return error(PSTR("begin without until"));
   }
   return 1;
 }
@@ -582,7 +580,7 @@ int feed_char(char ch)
     bufidx = 0;
     if (ch == ':') {
       if (wc >= MAX_WORDS) {
-        return error(PSTR("Maximum number of words reached"), mode);
+        return error(PSTR("Maximum number of words reached"));
       }
       state = STATE_DEFWORD;
       last_pc = pc;
@@ -615,7 +613,7 @@ int feed_char(char ch)
           }
           return 1;
         }
-        return error(PSTR("Word already defined"), buffer, mode);
+        return error(PSTR("Word already defined"), buffer);
       } else {
         return 1;
       }
@@ -631,7 +629,7 @@ int feed_char(char ch)
       if (bufidx > 0) {
         buffer[bufidx] = 0;
         int wid = word_get_id(buffer);
-        if (wid == -1) return error(PSTR("Undefined word"), buffer, mode);
+        if (wid == -1) return error(PSTR("Undefined word"), buffer);
         if (words[wid].type == WT_OPCODE) {
           if (!strcmp_P(buffer, PSTR("if"))) {
             if (mode == 2) {
@@ -642,14 +640,14 @@ int feed_char(char ch)
             open_if++;
           } else if (!strcmp_P(buffer, PSTR("else"))) {
             if (!open_if) {
-              return error(PSTR("else without if"), 0);
+              return error(PSTR("else without if"));
             }
             program[stack_pop()].param = pc;
             stack_push(pc);
             eval_code(OP_ELSE, 0, mode);
           } else if (!strcmp_P(buffer, PSTR("then"))) {
             if (!open_if) {
-              return error(PSTR("then without if"), 0);
+              return error(PSTR("then without if"));
             }
             program[stack_pop()].param = pc;
             eval_code(OP_THEN, 0, mode);
@@ -682,14 +680,14 @@ int feed_char(char ch)
           state = STATE_INITIAL;
         }
       } else if (ch != ';' && !isspace(ch)) {
-        return error(PSTR("Expecting word name"), mode);
+        return error(PSTR("Expecting word name"));
       } else if (ch == ';') {
         if (!check_open_structures()) return 0;
         eval_code(OP_RET, 0, mode);
         state = STATE_INITIAL;
       }
     } else if (ch == ':') {
-      if (mode == 1) return error(PSTR("Unexpected character: :"), mode);
+      if (mode == 1) return error(PSTR("Unexpected character: :"));
       bufidx = 0;
       state = STATE_DEFWORD;
       mode = 1;
@@ -701,7 +699,7 @@ int feed_char(char ch)
     if (isdigit(ch)) {
       buffer[bufidx++] = ch;
     } else if (ch == ':') {
-      return error(PSTR("Unexpected character: :"), mode);
+      return error(PSTR("Unexpected character: :"));
     } else {
       if (bufidx > 0) {
         buffer[bufidx] = 0;
@@ -719,7 +717,7 @@ int feed_char(char ch)
           state = STATE_INITIAL;
         }
       } else {
-        return error(PSTR("This should not happen"), mode);
+        return error(PSTR("This should not happen"));
       }
     }
     return 1;

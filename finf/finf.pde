@@ -524,7 +524,7 @@ unsigned char open_scope(unsigned char entry, char end_opcode)
   while (program[entry].opcode != end_opcode) {
     if (program[entry].opcode == OP_IF) {
       if (stack_pop()) {
-        entry = open_scope(entry + 1, OP_ELSE);
+        entry = open_scope(entry + 1, program[program[entry].param].opcode);
       } else {
         entry = open_scope(program[entry].param + 1, OP_THEN);
       }

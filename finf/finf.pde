@@ -768,7 +768,7 @@ void process_buffer()
 #define ENDCOLOR
 #endif /* TERMINAL */
 
-inline void setup()
+void setup()
 {
   Serial.begin(9600);
   serial_print_P(PSTR(COLOR "FINF 0.1.7 - "));
@@ -792,7 +792,7 @@ void backspace()
   serial_print_P(PSTR("\b \b"));
 }
 
-inline void loop()
+void loop()
 {
   if (Serial.available() > 0) {
     unsigned ch = Serial.read();
@@ -854,7 +854,7 @@ inline void loop()
   }
 }
 #else
-inline void loop()
+void loop()
 {
   if (Serial.available() > 0) {
     unsigned ch = Serial.read();

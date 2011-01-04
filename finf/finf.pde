@@ -33,7 +33,8 @@ enum {
   OP_DELAY, OP_PINWRITE, OP_PINMODE,
   OP_DISASM, OP_IF, OP_ELSE, OP_THEN,
   OP_BEGIN, OP_UNTIL, OP_EMIT, OP_FREEMEM,
-  OP_ANALOGREAD, OP_ANALOGWRITE, OP_PINREAD
+  OP_ANALOGREAD, OP_ANALOGWRITE, OP_PINREAD,
+  OP_GT
 };
 
 struct Word {
@@ -84,7 +85,8 @@ char default_words_str[] PROGMEM = "+\0"
     "freemem\0"
     "digread\0"
     "analogread\0"
-    "analogwrite";
+    "analogwrite\0"
+    ">";
 
 #define DW(pos) (&default_words_str[pos])
 DefaultWord default_words[] PROGMEM = {
@@ -114,6 +116,7 @@ DefaultWord default_words[] PROGMEM = {
   { DW(108), OP_PINREAD },
   { DW(116), OP_ANALOGREAD },
   { DW(127), OP_ANALOGWRITE },
+  { DW(139), OP_GT },
   { NULL, 0 },
 };
 #undef DW
@@ -458,6 +461,9 @@ void eval_code(unsigned char opcode, int param, char mode)
         break;
       case OP_DISASM:
         disasm();
+        break;
+      case OP_GT:
+        stack_push(stack_pop() > stack_pop());
         break;
       case OP_IF:
       case OP_ELSE:

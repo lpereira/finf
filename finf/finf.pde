@@ -326,14 +326,20 @@ void disasm()
       word_print_name(wid);
     }
 #ifdef TERMINAL
+
       serial_print_P(PSTR("\033[0m"));
 #endif /* TERMINAL */
     if (program[i].opcode == OP_IF
         || program[i].opcode == OP_ELSE
         || program[i].opcode == OP_UNTIL) {
-      Serial.print(' ');
+#ifdef TERMINAL
+      serial_print_P(PSTR("\033[40;36;1m goto "));
       Serial.print(program[i].param);
-      Serial.print(' ');
+      serial_print_P(PSTR("\033[0m"));
+#else
+      serial_print_P(PSTR("goto "));
+      Serial.print(program[i].param);
+#endif /* TERMINAL */
     }
     int curwordid = word_get_id_from_pc(i);
     if (curwordid > 0) {
@@ -344,7 +350,7 @@ void disasm()
 #else
       serial_print_P(PSTR(" # "));
       word_print_name(curwordid);
-#endif
+#endif /* TERMINAL */
     }
     Serial.println();
   }

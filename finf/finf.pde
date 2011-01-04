@@ -575,6 +575,9 @@ void run_scratch_program(void)
 
 int feed_char(char ch)
 {
+  if (bufidx >= sizeof(buffer)) {
+    return error(PSTR("Buffer size overrun"));
+  }
   switch (state) {
   case STATE_INITIAL:
     bufidx = 0;
@@ -662,6 +665,9 @@ int feed_char(char ch)
             stack_push(pc);
             open_begin++;
           } else if (!strcmp_P(buffer, PSTR("until"))) {
+            if (!open_begin) {
+              return error(PSTR("until without begin"));
+            }
             eval_code(OP_UNTIL, stack_pop(), mode);
             open_begin--;
             if (open_scratch > 0) {

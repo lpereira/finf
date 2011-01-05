@@ -231,7 +231,7 @@ int stack_pop(void)
   return stack[sp--];
 }
 
-int word_new_user(char *name)
+char word_new_user(char *name)
 {
   if (++wc >= MAX_WORDS) return -1;
   words[wc].name.user = name;
@@ -240,7 +240,7 @@ int word_new_user(char *name)
   return wc;
 }
 
-int word_new_opcode(PGM_P name, char opcode)
+char word_new_opcode(PGM_P name, unsigned char opcode)
 {
   if (++wc >= MAX_WORDS) return -1;
   words[wc].name.internal = name;
@@ -252,24 +252,21 @@ int word_new_opcode(PGM_P name, char opcode)
 void word_init()
 {
   char i;
-
   for (i = 0; ; i++) {
     char *name = (char *)pgm_read_word(&default_words[i].name);
     char  op   = pgm_read_byte(&default_words[i].opcode);
     if (!name) break;
     word_new_opcode(name, op);
   }
-
   for (; i < MAX_WORDS; i++) {
     words[i].name.internal = NULL;
     words[i].param.opcode = 0;
   }
 }
 
-int word_get_id(const char *name)
+char word_get_id(const char *name)
 {
-  char i;
-  for (i = wc; i >= 0; i--) {
+  for (char i = wc; i >= 0; i--) {
     if (words[i].type == WT_OPCODE) {
       if (!strcmp_P(name, words[i].name.internal))
         return i;
@@ -281,7 +278,7 @@ int word_get_id(const char *name)
   return -1;
 }
 
-int word_get_id_from_pc(int pc)
+char word_get_id_from_pc(char pc)
 {
   for (char i = wc; i >= DEFAULT_WORDS_LEN; i--) {
     if (words[i].param.entry == pc)
@@ -290,7 +287,7 @@ int word_get_id_from_pc(int pc)
   return -1;
 }
 
-int word_get_id_from_opcode(unsigned char opcode)
+char word_get_id_from_opcode(unsigned char opcode)
 {
   for (char i = DEFAULT_WORDS_LEN - 1; i >= 0; i--) {
     if (words[i].param.opcode == opcode)
@@ -299,7 +296,7 @@ int word_get_id_from_opcode(unsigned char opcode)
   return -1;
 }
 
-void word_print_name(int wid)
+void word_print_name(char wid)
 {
   if (words[wid].type == WT_OPCODE) {
     serial_print_P((char*)words[wid].name.internal);
@@ -491,8 +488,7 @@ void eval_code(unsigned char opcode, int param, char mode)
         break;
       case OP_SHOWSTACK:
         {
-          int i;
-          for (i = sp; i > 0; i--) {
+          for (char i = sp; i > 0; i--) {
             Serial.print((int)stack[i]);
             Serial.print(' ');  
           }
@@ -515,7 +511,7 @@ void eval_code(unsigned char opcode, int param, char mode)
   }
 }
 
-unsigned char open_scope(unsigned char entry, char end_opcode)
+unsigned char open_scope(unsigned char entry, unsigned char end_opcode)
 {
   while (program[entry].opcode != end_opcode) {
     if (program[entry].opcode == OP_IF) {
@@ -545,7 +541,7 @@ unsigned char open_scope(unsigned char entry, char end_opcode)
   return entry;
 }
 
-int check_open_structures(void)
+char check_open_structures(void)
 {
   if (open_if) {
     return error(PSTR("if without then"));

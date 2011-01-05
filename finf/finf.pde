@@ -120,6 +120,7 @@ DefaultWord default_words[] PROGMEM = {
   { DW(139), OP_GT },
   { NULL, 0 },
 };
+#define DEFAULT_WORDS_LEN (sizeof(default_words) / sizeof(default_words[0]) - 1)
 #undef DW
 
 Program program[MAX_PROGRAM];
@@ -282,9 +283,8 @@ int word_get_id(const char *name)
 
 int word_get_id_from_pc(int pc)
 {
-  char i;
-  for (i = wc; i >= 0; i--) {
-    if (words[i].type == WT_USER && words[i].param.entry == pc)
+  for (char i = wc; i >= DEFAULT_WORDS_LEN; i--) {
+    if (words[i].param.entry == pc)
       return i;
   }
   return -1;
@@ -292,9 +292,8 @@ int word_get_id_from_pc(int pc)
 
 int word_get_id_from_opcode(unsigned char opcode)
 {
-  char i;
-  for (i = wc; i >= 0; i--) {
-    if (words[i].type == WT_OPCODE && words[i].param.opcode == opcode)
+  for (char i = DEFAULT_WORDS_LEN - 1; i >= 0; i--) {
+    if (words[i].param.opcode == opcode)
       return i;
   }
   return -1;

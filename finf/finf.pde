@@ -176,7 +176,7 @@ char error(char *msg)
       open_begin--;
     }
     if (open_scratch > 0) {
-      pc = open_scratch;
+      pc = scratch_pc;
       open_scratch = 0;
     } else {
       pc = last_pc;

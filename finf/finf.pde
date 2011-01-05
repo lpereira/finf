@@ -605,7 +605,11 @@ int feed_char(char ch)
       if (bufidx > 0) {
         buffer[bufidx] = 0;
         if (word_get_id(buffer) == -1) {
-          word_new_user(strdup(buffer));
+          char *dup = strdup(buffer);
+          if (!dup) {
+            return error(PSTR("Out of memory"));
+          }
+          word_new_user(dup);
           bufidx = 0;
           if (ch == ';') {
             eval_code(OP_RET, 0, mode);

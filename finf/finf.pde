@@ -563,7 +563,7 @@ void open_scratch_program(void)
   }
 }
 
-void run_scratch_program(void)
+void close_scratch_program(void)
 {
   if (open_scratch == 1) {
     eval_code(OP_RET, 0, mode);
@@ -655,7 +655,7 @@ int feed_char(char ch)
             eval_code(OP_THEN, 0, mode);
             open_if--;
             if (open_scratch > 0) {
-              run_scratch_program();
+              close_scratch_program();
             }
           } else if (!strcmp_P(buffer, PSTR("begin"))) {
             if (mode == 2) {
@@ -670,7 +670,7 @@ int feed_char(char ch)
             eval_code(OP_UNTIL, stack_pop(), mode);
             open_begin--;
             if (open_scratch > 0) {
-              run_scratch_program();
+              close_scratch_program();
             }
           } else {
             eval_code(words[wid].param.opcode, 0, mode);

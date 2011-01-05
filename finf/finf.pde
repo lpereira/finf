@@ -17,9 +17,6 @@
 #define MAX_PROGRAM 64
 #define MAX_STACK 16
 
-#define WT_OPCODE 0
-#define WT_USER 1
-
 #define STATE_INITIAL 0
 #define STATE_DEFWORD 1
 #define STATE_ADDCODE 2
@@ -47,7 +44,6 @@ struct Word {
     char opcode;
     unsigned char entry;
   } param;
-  unsigned char type: 1;
 }  __attribute__((packed));
 
 struct Program {
@@ -121,6 +117,8 @@ DefaultWord default_words[] PROGMEM = {
   { NULL, 0 },
 };
 #define DEFAULT_WORDS_LEN (sizeof(default_words) / sizeof(default_words[0]) - 1)
+#define WORD_IS_OPCODE(wid) (((wid) < DEFAULT_WORDS_LEN))
+#define WORD_IS_USER(wid) (!WORD_IS_OPCODE((wid)))
 #undef DW
 
 Program program[MAX_PROGRAM];
@@ -235,7 +233,6 @@ char word_new_user(char *name)
 {
   if (++wc >= MAX_WORDS) return -1;
   words[wc].name.user = name;
-  words[wc].type = WT_USER;
   words[wc].param.entry = pc;
   return wc;
 }
@@ -244,7 +241,6 @@ char word_new_opcode(PGM_P name, unsigned char opcode)
 {
   if (++wc >= MAX_WORDS) return -1;
   words[wc].name.internal = name;
-  words[wc].type = WT_OPCODE;
   words[wc].param.opcode = opcode;
   return wc;
 }
@@ -267,7 +263,7 @@ void word_init()
 char word_get_id(const char *name)
 {
   for (char i = wc; i >= 0; i--) {
-    if (words[i].type == WT_OPCODE) {
+    if (WORD_IS_OPCODE(i)) {
       if (!strcmp_P(name, words[i].name.internal))
         return i;
     } else {
@@ -302,7 +298,7 @@ void word_print_name(char wid)
     error(PSTR("invalid word id"));
     return;
   }
-  if (words[wid].type == WT_OPCODE) {
+  if (WORD_IS_OPCODE(wid)) {
     serial_print_P((char*)words[wid].name.internal);
   } else {
     Serial.print(words[wid].name.user);
@@ -472,10 +468,9 @@ void eval_code(unsigned char opcode, int param, char mode)
         break;
       case OP_WORDS:
         {
-          int i;
-          for (i = 0; i <= wc; i++) {
+          for (char i = 0; i <= wc; i++) {
 #ifdef TERMINAL
-            if (words[i].type == WT_OPCODE) {
+            if (WORD_IS_OPCODE(i)) {
               serial_print_P(PSTR("\033[40;36m"));
             } else {
               serial_print_P(PSTR("\033[40;33m"));
@@ -501,7 +496,7 @@ void eval_code(unsigned char opcode, int param, char mode)
         break;
       case OP_CALL:
         {
-          if (words[param].type == WT_OPCODE) {
+          if (WORD_IS_OPCODE(param)) {
             eval_code(words[param].param.opcode, param, mode);
           } else {
             open_scope(words[param].param.entry, OP_RET);
@@ -636,7 +631,7 @@ int feed_char(char ch)
         buffer[bufidx] = 0;
         int wid = word_get_id(buffer);
         if (wid == -1) return error(PSTR("Undefined word"), buffer);
-        if (words[wid].type == WT_OPCODE) {
+        if (WORD_IS_OPCODE(wid)) {
           if (!strcmp_P(buffer, PSTR("if"))) {
             if (mode == 2) {
               open_scratch_program();

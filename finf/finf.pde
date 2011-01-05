@@ -298,6 +298,10 @@ char word_get_id_from_opcode(unsigned char opcode)
 
 void word_print_name(char wid)
 {
+  if (wid < 0 || wid > wc) {
+    error(PSTR("invalid word id"));
+    return;
+  }
   if (words[wid].type == WT_OPCODE) {
     serial_print_P((char*)words[wid].name.internal);
   } else {

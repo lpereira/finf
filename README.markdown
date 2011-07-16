@@ -20,3 +20,17 @@ This screenshot demonstrates a build with TERMINAL defined. This adds primitive 
 Without TERMINAL defined, it is really only usable on a client-buffered terminal emulator, such as Arduino's Serial Monitor; even then, it is not so pleasant to use:
 
 ![serial monitor screenshot!](http://i.imgur.com/U2itX.png)
+
+Example
+-------
+
+The blinking example can be cut and pasted from the code below. The word 'blinkf' will blink the LED forever (or until the user presses ^C).
+
+    1 13 pinmode
+    : led 13 digwrite;
+    : on 1 led;
+    : off 0 led;
+    : w 100 delay;
+    : blink 0 begin on w off w 1 + dup 10 = negate until;
+    : blinkf begin on w off w 1 until;
+    blink

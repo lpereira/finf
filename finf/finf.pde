@@ -47,7 +47,7 @@ enum {
   OP_IN,    // set pin to digital read
   OP_OUT,   // set pin to digital write
   OP_ON,    // turn digital pin on
-  OP_OFF,   // tirn digital pin off
+  OP_OFF,   // turn digital pin off
   OP_LED,   // the LED pin number
   OP_PWM,   // set PWM on pin
   OP_RESET,            // reset the arduino board
@@ -624,7 +624,7 @@ void eval_code(unsigned char opcode, int param, char mode)
     case OP_WORDS:
       {
         int i;
-        
+
         for (i = 0; i <= wc; i++) {
 #ifdef TERMINAL
           if (WORD_IS_OPCODE(i)) {
@@ -722,13 +722,11 @@ void eval_code(unsigned char opcode, int param, char mode)
     case OP_STORE:
       addr = stack_pop();
       *((int *)addr) = stack_pop();
-      //Serial.print("Opcode -- !");
       break;   
 
     case OP_FETCH:
       addr = stack_pop();
       stack_push(*((int *)addr));
-      //Serial.print("Opcode -- @");
       break;
 
     case OP_FETCH_AND_PRINT:
@@ -737,76 +735,68 @@ void eval_code(unsigned char opcode, int param, char mode)
       break;
 
     case OP_EEPROM_STORE:
-      //Serial.print("Opcode -- e!");
       EEPROM.write(stack_pop(), stack_pop());
       break;
-      
+
     case OP_EEPROM_FETCH:
-      //Serial.print("Opcode -- e@");
       stack_push(EEPROM.read(stack_pop()));
       break;
-      
+
     case OP_EEPROM_FETCH_AND_PRINT:
-      //Serial.print("Opcode -- e?");
       Serial.print(EEPROM.read(stack_pop()));
       break;
-      
+
     case OP_KEY:
       while(!Serial.available());
       stack_push(Serial.read());
       break;
-   
-   case OP_STEPPER_MOTOR:
-     run_steppers();
-     break;
-     
-   case OP_DC_MOTOR:
-     run_dcmotor();
-     break;
-     
-   case OP_DC_MOTORS_FORWARD:
-     run_dcmotors_forward();
-     break;
-  
-   case OP_DC_MOTORS_BACKWARD:
-     run_dcmotors_backward();
-     break;
-  
-   case OP_DC_MOTORS_TURN:
-     run_dcmotors_turn();
-     break;
-     
-   case OP_DC_MOTORS_STOP:
-     run_dcmotors_stop();
-     break;
-   
-   case OP_GET_PAD_ADDRESS:
-     if(NULL == pad) 
-       pad = (char *)calloc(PAD_SIZE, sizeof(char));
-     stack_push((int)pad);
-     break;
-       
-   case OP_VARIABLE:
+
+    case OP_STEPPER_MOTOR:
+      run_steppers();
+      break;
+
+    case OP_DC_MOTOR:
+      run_dcmotor();
+      break;
+
+    case OP_DC_MOTORS_FORWARD:
+      run_dcmotors_forward();
+      break;
+
+    case OP_DC_MOTORS_BACKWARD:
+      run_dcmotors_backward();
+      break;
+
+    case OP_DC_MOTORS_TURN:
+      run_dcmotors_turn();
+      break;
+
+    case OP_DC_MOTORS_STOP:
+      run_dcmotors_stop();
+      break;
+
+    case OP_GET_PAD_ADDRESS:
+      if(NULL == pad) 
+        pad = (char *)calloc(PAD_SIZE, sizeof(char));
+      stack_push((int)pad);
+      break;
+
+    case OP_VARIABLE:
       state = STATE_DEFINE_VARIABLE;
-      //last_pc = pc;
-      //last_wc = wc;
-      //mode = 1;
       break;
-      
-   case OP_DEFINE_CONST:
+
+    case OP_DEFINE_CONST:
       state = STATE_DEFINE_CONST;
-      //mode = 1;
       break;
-      
+
     case OP_READ_LINE:
-      // bytes buffer READLN -- 
       readln();
       break;
-       
+
     case OP_PRINT_MEMORY_STRING:
       Serial.print((char *)stack_pop());
       break;
-       
+
     case OP_MOVE_MEMORY:
       {
         int len = stack_pop();
@@ -816,11 +806,11 @@ void eval_code(unsigned char opcode, int param, char mode)
         memmove((void *)initial_pos, (void *)target_pos, len);
       }
       break;
-       
+
     case OP_GET_STRING_LENGTH:
       stack_push(strlen((char *)stack_pop()));
       break;
-       
+
     default:
       serial_print_P(PSTR("Unimplemented opcode: "));
       Serial.println((int)opcode);
@@ -921,17 +911,17 @@ int feed_char(char ch)
       mode = 2;
     }
     return 1;
-    
+
   case STATE_DEFINE_VARIABLE:
   case STATE_DEFINE_CONST:
     if (isspace(ch)) {
       if (bufidx > 0) {
         int value;
-        
+
         last_pc = pc;
         last_wc = wc;
         buffer[bufidx] = 0;
-        
+
         if (word_get_id(buffer) == -1) {
           char *dup = strdup(buffer);
           if (!dup) {
@@ -939,21 +929,18 @@ int feed_char(char ch)
           }
           word_new_user(dup);
           bufidx = 0;
-          
-          //Serial.print("defining var/const ");
-          //Serial.println(buffer);
 
           if(state == STATE_DEFINE_CONST)
             value = stack_pop(); 
           else
             value = (int)calloc(1, sizeof(int));
- 
+
           program[pc].opcode = OP_NUM;
           program[pc++].param = value;
- 
+
           program[pc].opcode = OP_RET;
           program[pc++].param = 0;
-          
+
           state = STATE_INITIAL;
 
           return 1;
@@ -968,7 +955,7 @@ int feed_char(char ch)
     }
     buffer[bufidx++] = ch;
     return 1;
-    
+
   case STATE_DEFWORD:
     if (isspace(ch) || ch == ';') {
       if (bufidx > 0) {
@@ -997,7 +984,7 @@ int feed_char(char ch)
     }
     buffer[bufidx++] = ch;
     return 1;
-    
+
   case STATE_ADDCODE:
     if (bufidx == 0 && isdigit(ch)) {
       buffer[bufidx++] = ch;
@@ -1087,7 +1074,7 @@ int feed_char(char ch)
       buffer[bufidx++] = ch;
     }
     return 1;
-    
+
   case STATE_ADDNUM:
     if (isdigit(ch)) {
       buffer[bufidx++] = ch;
@@ -1178,8 +1165,6 @@ void setup()
   if(EEPROM.read(0))
   {
     load_from_eeprom();
-    //term_bufidx=0;
-    //clear_buffer();
     feed_char(' ');
     prompt();
   }
@@ -1307,7 +1292,7 @@ void list_eeprom()
       Serial.print((char)ch);
   } 
   while(ch != 0);
-  
+
   Serial.println();
   Serial.print(i);
   Serial.println(" bytes used.");
@@ -1349,204 +1334,164 @@ void save_to_eeprom()
 
 void run_steppers() 
 {
-  // if (sp <= 0) 
-  //  Serial.println("( steps direction port 'step' -- )");
-  //else 
-  {
-    int port = stack_pop();
-    int motor_direction = stack_pop();
-    int steps = stack_pop();
-    
-    int motor_speed = 30; //stack_pop();
-  
-    AF_Stepper motor(100, port);
-    motor.setSpeed(motor_speed); 
-    motor.step(steps, motor_direction, DOUBLE); 
-  }
+  int port = stack_pop();
+  int motor_direction = stack_pop();
+  int steps = stack_pop();
+
+  int motor_speed = 30; //stack_pop();
+
+  AF_Stepper motor(100, port);
+  motor.setSpeed(motor_speed); 
+  motor.step(steps, motor_direction, DOUBLE); 
 }
 
 void run_dcmotor()
 {
-  //if (sp <= 0) 
-  //  Serial.println("( speed direction port 'motor' -- )\r\ndirections are 1,2, motors are 1-4.");
-  //else 
-  {
-    int port = stack_pop();
-    int motor_direction = stack_pop();
-    int motor_speed = stack_pop();
-    
-    AF_DCMotor motor(port);
-    
-    motor.setSpeed(200);
-    motor.run(RELEASE);
+  int port = stack_pop();
+  int motor_direction = stack_pop();
+  int motor_speed = stack_pop();
 
-    motor.run(motor_direction);
-    motor.setSpeed(motor_speed);  
+  AF_DCMotor motor(port);
 
-  }
+  motor.setSpeed(200);
+  motor.run(RELEASE);
+
+  motor.run(motor_direction);
+  motor.setSpeed(motor_speed);  
 }
 
 void run_dcmotors_forward() 
 {
-   //Serial.println("\r\nrun_dcmotors_forward");
-    
-   //if (sp <= 0) 
-   // Serial.println("( speed motor_bank 'forward' -- )\r\n");
-  //else 
-  {
-    int motor1_port;
-    int motor2_port;
-    
-    int bank = stack_pop();
-    int motor_speed = stack_pop();
-    
-    if(bank == 1)
-    {
-      motor1_port = 1;
-      motor2_port = 2;
-    }
-    else
-    {
-      motor1_port = 3;
-      motor2_port = 4;
-    }
-    
-    AF_DCMotor motor1(motor1_port);
-    AF_DCMotor motor2(motor2_port);
-    
-    motor1.setSpeed(200);
-    motor1.run(RELEASE);
-    motor2.setSpeed(200);
-    motor2.run(RELEASE);
+  int motor1_port;
+  int motor2_port;
 
-    motor1.run(FORWARD);
-    motor1.setSpeed(motor_speed);
-    motor2.run(BACKWARD);
-    motor2.setSpeed(motor_speed);  
+  int bank = stack_pop();
+  int motor_speed = stack_pop();
+
+  if(bank == 1)
+  {
+    motor1_port = 1;
+    motor2_port = 2;
   }
+  else
+  {
+    motor1_port = 3;
+    motor2_port = 4;
+  }
+
+  AF_DCMotor motor1(motor1_port);
+  AF_DCMotor motor2(motor2_port);
+
+  motor1.setSpeed(200);
+  motor1.run(RELEASE);
+  motor2.setSpeed(200);
+  motor2.run(RELEASE);
+
+  motor1.run(FORWARD);
+  motor1.setSpeed(motor_speed);
+  motor2.run(BACKWARD);
+  motor2.setSpeed(motor_speed);  
 }
 
 void run_dcmotors_backward()
 {
-   //Serial.println("\r\nrun_dcmotors_backward");
-    
-   //if (sp <= 0) 
-   // Serial.println("( speed motor_bank 'back' -- )\r\n");
-  //else 
-  {
-    int motor1_port;
-    int motor2_port;
-    
-    int bank = stack_pop();
-    int motor_speed = stack_pop();
-    
-    if(bank == 1)
-    {
-      motor1_port = 1;
-      motor2_port = 2;
-    }
-    else
-    {
-      motor1_port = 3;
-      motor2_port = 4;
-    }
-    
-    AF_DCMotor motor1(motor1_port);
-    AF_DCMotor motor2(motor2_port);
-    
-    motor1.setSpeed(200);
-    motor1.run(RELEASE);
-    motor2.setSpeed(200);
-    motor2.run(RELEASE);
+  int motor1_port;
+  int motor2_port;
 
-    motor1.run(BACKWARD);
-    motor1.setSpeed(motor_speed);
-    motor2.run(FORWARD);
-    motor2.setSpeed(motor_speed);  
+  int bank = stack_pop();
+  int motor_speed = stack_pop();
+
+  if(bank == 1)
+  {
+    motor1_port = 1;
+    motor2_port = 2;
   }
+  else
+  {
+    motor1_port = 3;
+    motor2_port = 4;
+  }
+
+  AF_DCMotor motor1(motor1_port);
+  AF_DCMotor motor2(motor2_port);
+
+  motor1.setSpeed(200);
+  motor1.run(RELEASE);
+  motor2.setSpeed(200);
+  motor2.run(RELEASE);
+
+  motor1.run(BACKWARD);
+  motor1.setSpeed(motor_speed);
+  motor2.run(FORWARD);
+  motor2.setSpeed(motor_speed);  
 }
 
 void run_dcmotors_stop() 
 {
-  //Serial.println("\r\nrun_dcmotors_stop");
-    
-  //if (sp <= 0) 
-  //  Serial.println("( motor_bank 'stop' -- )\r\n");
-  //else 
+  int motor1_port;
+  int motor2_port;
+
+  int bank = stack_pop();
+
+  if(bank == 1)
   {
-    int motor1_port;
-    int motor2_port;
-    
-    int bank = stack_pop();
-    
-    if(bank == 1)
-    {
-      motor1_port = 1;
-      motor2_port = 2;
-    }
-    else
-    {
-      motor1_port = 3;
-      motor2_port = 4;
-    }
-    
-    AF_DCMotor motor1(motor1_port);
-    AF_DCMotor motor2(motor2_port);
-    
-    motor1.setSpeed(0);
-    motor1.run(RELEASE);
-    motor2.setSpeed(0);
-    motor2.run(RELEASE);
-    
-    motor1.run(BACKWARD);
-    motor1.setSpeed(0);
-    motor2.run(FORWARD);
-    motor2.setSpeed(0);  
+    motor1_port = 1;
+    motor2_port = 2;
   }
-}
- 
-void run_dcmotors_turn() 
-{
-  //Serial.println("\r\nrun_dcmotors_turn");
-    
-  //if (sp <= 0) 
-  //  Serial.println("( direction speed motor_bank 'turn' -- )\r\n");
-  //else 
+  else
   {
-    int motor1_port;
-    int motor2_port;
-    int bank = stack_pop();
-    int motor_speed = stack_pop();
-    int turn_direction = stack_pop();
-    
-    if(bank == 1)
-    {
-      motor1_port = 1;
-      motor2_port = 2;
-    }
-    else
-    {
-      motor1_port = 3;
-      motor2_port = 4;
-    }
-    
-    AF_DCMotor motor1(motor1_port);
-    AF_DCMotor motor2(motor2_port);
-    
-    motor1.setSpeed(0);
-    motor1.run(RELEASE);
-    motor2.setSpeed(0);
-    motor2.run(RELEASE);
-    
-    turn_direction = turn_direction == 1 ? BACKWARD : FORWARD;
-    motor1.run(turn_direction);
-    motor1.setSpeed(motor_speed);
-    motor2.run(turn_direction);
-    motor2.setSpeed(motor_speed);  
+    motor1_port = 3;
+    motor2_port = 4;
   }
+
+  AF_DCMotor motor1(motor1_port);
+  AF_DCMotor motor2(motor2_port);
+
+  motor1.setSpeed(0);
+  motor1.run(RELEASE);
+  motor2.setSpeed(0);
+  motor2.run(RELEASE);
+
+  motor1.run(BACKWARD);
+  motor1.setSpeed(0);
+  motor2.run(FORWARD);
+  motor2.setSpeed(0);  
 }
 
-// mem_location length READLN bytes_read
+void run_dcmotors_turn() 
+{
+  int motor1_port;
+  int motor2_port;
+  int bank = stack_pop();
+  int motor_speed = stack_pop();
+  int turn_direction = stack_pop();
+
+  if(bank == 1)
+  {
+    motor1_port = 1;
+    motor2_port = 2;
+  }
+  else
+  {
+    motor1_port = 3;
+    motor2_port = 4;
+  }
+
+  AF_DCMotor motor1(motor1_port);
+  AF_DCMotor motor2(motor2_port);
+
+  motor1.setSpeed(0);
+  motor1.run(RELEASE);
+  motor2.setSpeed(0);
+  motor2.run(RELEASE);
+
+  turn_direction = turn_direction == 1 ? BACKWARD : FORWARD;
+  motor1.run(turn_direction);
+  motor1.setSpeed(motor_speed);
+  motor2.run(turn_direction);
+  motor2.setSpeed(motor_speed);  
+}
+
 void readln() 
 {
   int max_len = stack_pop() - 1;
@@ -1554,42 +1499,40 @@ void readln()
   char* current_pos = initial_pos;
   char ch = 0;
   bool done = false;
-  
+
   do
   {
     if(Serial.available())
     {
       ch = Serial.read();
       Serial.write(ch);
-      
+
       switch(ch) 
       {
-        case '\r':
-        case '\n':
+      case '\r':
+      case '\n':
+        done = true;
+        break;
+
+      case 8: // backspace
+        --current_pos;
+        if(current_pos < initial_pos) 
+          current_pos = initial_pos;
+        break;
+
+      default:
+        *(++current_pos) = ch;
+        if(current_pos >= initial_pos + max_len)
           done = true;
-          break;
-          
-        case 8: // backspace
-          --current_pos;
-          if(current_pos < initial_pos) 
-            current_pos = initial_pos;
-          break;
-        
-        default:
-          *(++current_pos) = ch;
-          //++current_pos;
-          if(current_pos >= initial_pos + max_len)
-            done = true;
-          break;
+        break;
       }
     }
-  } while(!done); 
-  
+  } 
+  while(!done); 
+
   *(++current_pos) = 0;
   stack_push(current_pos - initial_pos);
   Serial.println();   
-  //Serial.readBytesUntil('0x13', (char *)stack_pop(), stack_pop());
-
 }
 
- 
+
